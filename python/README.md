@@ -9,7 +9,7 @@ This training script is modified from the original [authors](https://github.com/
 1. We use 1D-convolutional RNN as our NN architecture 
 1. We add the time labels to mark the starting and ending times of the utterances in s2i dataset
 ## Training procedure
-Note that all python scripts described here are all under the folder `ai/nnsp_cleanup/python`
+Note that all python scripts described here are all under the folder `nnsp/python`
 1. (optional but recommended) Create a python [virtualenv](https://docs.python.org/3/library/venv.html) and install python dependencies into it:
 - Linux
 ```

@@ -95,36 +95,7 @@ One common example for the speech application might be running a voice activity 
 `KWS` is widespread in our life nowadays, e.g., `Hey-Siri` for iPhones, `Alexa` for Amazon Echo devices, etc. If the device detects its name, it will do further processes, such as voice commands or even connecting to the cloud to search whatever users want to do.
 In our KWS case, we use `Hi-Galaxy` as our keyword, where you can download the dataset from [here](https://developer.qualcomm.com/project/keyword-speech-dataset) `[1]`.
 
-In our example, we control 3 NNs, `VAD`, `KWS` and `S2I`, where the pseudocode is blow:
-
-```python
-// Pseudocode for NNSP
-nnsp_status in {vad, s2i, kws}
-
-while data_in:
-
-  switch (nnsp_status):
-      
-      case vad:
-        if speech presence:
-          printf("Voice activates")   // show the comand on SWO
-          nnsp_status = kws
-        break
-
-      case kws:
-        if keyword presence
-          printf("Hi-Galaxy")         // show the comand on SWO
-          nnsp_status = s2i
-        else:
-          nnsp_status = vad
-        break
-
-      case s2i:
-        if command presence:
-          printf("command")           // show the comand on SWO
-        nnsp_status = vad
-        break
-```
+In our example, we control 3 NNs, `VAD`, `KWS` and `S2I` sequentially.
 
 `[1]` Byeonggeun Kim, Mingu Lee, Jinkyu Lee, Yeonseok Kim, and Kyuwoong Hwang, “Query-by-example on-device keyword spotting,” to be published in IEEE Automatic Speech Recognition and Understanding Workshop (ASRU 2019), Sentosa, Singapore, Dec. 2019 to be published
 
