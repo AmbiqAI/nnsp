@@ -59,15 +59,15 @@ deactivate
   $ python test_s2i.py --epoch_loaded=800 --s2i_nn_arch='nn_arch/def_s2i_nn_arch.txt' --recording=0 --test_wavefile='test_wavs/speech.wav'
 ```
   * This will directly use the already saved wave file `--test_wavefile='test_wavs/speech.wav'` without recording.
-# Training VAD model
-To train a voice activity detection (VAD) model, you can use the scripts instead as below
+# Training speech activity detection model
+To train a speech activity detection model, you can use the scripts instead as below
 1. `data_vad.py`
 2. `train_vad.py`
 3. `test_vad.py`
 
 The procedure is the same as S2I case. 
-# Training KWS model
-To train a keyword spotting (KWS) model, you can use the scripts instead as below
+# Training Hi-Galaxy model
+To train `Hi-Galaxy` model, you can use the scripts instead as below
 1. `data_kws.py`
 2. `train_kws.py`
 3. `test_kws.py`

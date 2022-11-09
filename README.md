@@ -87,15 +87,15 @@ extern NeuralNetClass net_s2i;
   Header file: `def_nn0_s2i.h`
 </p>
 
-# NNSP Model: VAD+KWS+S2I
+# NNSP Model: speech activity detection + Hi-Galaxy + S2I
 If there are more NNs, users need to define the other instances of `NNSPClass` and write a control among them, depending on users' applications. 
 
-One common example for the speech application might be running a voice activity detection (`VAD`) and keyword spotting (`KWS`) in front of the S2I model. `VAD` is used to detect whether speech is present or not. Usually, the size of `VAD` model is smaller. Hence, it provides one approch to saving memory and power. After `VAD` assures the speech is observed, some more complicated processes will proceed further. 
+One common example for the speech application might be running a `speech activity detection` and `Hi-Galaxy` in front of the S2I model. `speech activity detection` is used to detect whether speech is present or not. Usually, the size of `speech activity detection` model is smaller. Hence, it provides one approch to saving memory and power. After `speech activity detection` assures the speech is observed, some more complicated processes will proceed further. 
 
-`KWS` is widespread in our life nowadays, e.g., `Hey-Siri` for iPhones, `Alexa` for Amazon Echo devices, etc. If the device detects its name, it will do further processes, such as voice commands or even connecting to the cloud to search whatever users want to do.
+`Wakeup-Keyword` is widespread in our life nowadays, e.g., `Hey-Siri` for iPhones, `Alexa` for Amazon Echo devices, etc. If the device detects its name, it will do further processes, such as voice commands or even connecting to the cloud to search whatever users want to do.
 In our KWS case, we use `Hi-Galaxy` as our keyword, where you can download the dataset from [here](https://developer.qualcomm.com/project/keyword-speech-dataset) `[1]`.
 
-In our example, we control 3 NNs, `VAD`, `KWS` and `S2I` sequentially.
+In our example, we control 3 NNs, `VAD`, `Hi-Galaxy` and `S2I` sequentially.
 
 `[1]` Byeonggeun Kim, Mingu Lee, Jinkyu Lee, Yeonseok Kim, and Kyuwoong Hwang, “Query-by-example on-device keyword spotting,” to be published in IEEE Automatic Speech Recognition and Understanding Workshop (ASRU 2019), Sentosa, Singapore, Dec. 2019 to be published
 
