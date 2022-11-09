@@ -65,28 +65,6 @@ Also, in our specific s2i NN case, `def_nn0_s2i.c` has two purposes:
   1. For feature extraction, we use Mel spectrogram with 40 Mel-scale. To apply the standarization to the features in training dataset, it requires statistical mean and standard deviation, which is defined in `def_nn0_s2i.c`. 
   2. For the neural network, it points to the trained weight table defined in `def_nn0_s2i.c` as well.
 
-It can be easily seen from the header file
-```c
-#ifndef __DEF_NN0_S2I__
-#define __DEF_NN0_S2I__
-#include <stdint.h>
-#include "neural_nets.h"
-
-// statistical mean
-extern const int32_t feature_mean_s2i[];
-
-// inverse of statistical standard deviation
-extern const int32_t feature_stdR_s2i[];
-
-// s2i neural network
-extern NeuralNetClass net_s2i;
-
-#endif
-```
-<p align="center">
-  Header file: `def_nn0_s2i.h`
-</p>
-
 # NNSP Model: speech activity detection + Hi-Galaxy + S2I
 If there are more NNs, users need to define the other instances of `NNSPClass` and write a control among them, depending on users' applications. 
 
