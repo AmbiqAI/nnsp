@@ -1,5 +1,5 @@
 # NN Speech
-NN Speech (NNSP) integrates 3 neural networks, voice activitiy detection (VAD), keyword spotting (KWS) and Speech to intent (S2I). We start from S2I model as an example.
+NN Speech (NNSP) integrates 3 neural networks, speech activitiy detection, HI-Galaxy and Speech to intent (S2I). We start from S2I model as an example.
 ## Directory contents
 ```py
 nnsp/ # root 
@@ -71,14 +71,14 @@ If there are more NNs, users need to define the other instances of `NNSPClass` a
 One common example for the speech application might be running a `speech activity detection` and `Hi-Galaxy` in front of the S2I model. `speech activity detection` is used to detect whether speech is present or not. Usually, the size of `speech activity detection` model is smaller. Hence, it provides one approch to saving memory and power. After `speech activity detection` assures the speech is observed, some more complicated processes will proceed further. 
 
 `Wakeup-Keyword` is widespread in our life nowadays, e.g., `Hey-Siri` for iPhones, `Alexa` for Amazon Echo devices, etc. If the device detects its name, it will do further processes, such as voice commands or even connecting to the cloud to search whatever users want to do.
-In our KWS case, we use `Hi-Galaxy` as our keyword, where you can download the dataset from [here](https://developer.qualcomm.com/project/keyword-speech-dataset) `[1]`.
+In our case, we use `Hi-Galaxy` as our keyword, where you can download the dataset from [here](https://developer.qualcomm.com/project/keyword-speech-dataset) `[1]`.
 
-In our example, we control 3 NNs, `VAD`, `Hi-Galaxy` and `S2I` sequentially.
+In our example, we control 3 NNs, `speech activity detection`, `Hi-Galaxy` and `S2I` sequentially.
 
 `[1]` Byeonggeun Kim, Mingu Lee, Jinkyu Lee, Yeonseok Kim, and Kyuwoong Hwang, “Query-by-example on-device keyword spotting,” to be published in IEEE Automatic Speech Recognition and Understanding Workshop (ASRU 2019), Sentosa, Singapore, Dec. 2019 to be published
 
 
-## Compiling and Running a Pre-Trained VAD+KWS+S2I Model
+## Compiling and Running a Pre-Trained '`speech activity detection`'+KWS+S2I Model
 
 1. Go to `nnsp/evb/` directory
 1. `make clean`
