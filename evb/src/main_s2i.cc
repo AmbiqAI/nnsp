@@ -6,7 +6,9 @@
 #include "ns_ambiqsuite_harness.h"
 #include "ns_audio.h"
 #include "ambiq_nnsp_const.h"
+#include "arm_intrinsic_test.h"
 #define NUM_CHANNELS 1
+
 
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
@@ -96,11 +98,12 @@ int main(void)
 {
     s2iCntrlClass cntrl_inst;
     g_audioRecording = false;
-
     ns_itm_printf_enable();
     
     am_hal_cachectrl_config(&am_hal_cachectrl_defaults);
     am_hal_cachectrl_enable();
+
+    
 
     //
     // Initialize the printf interface for ITM output
@@ -116,6 +119,7 @@ int main(void)
     
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
+    arm_test();
     
     ns_printf("\nPress button to start!\n");
 
