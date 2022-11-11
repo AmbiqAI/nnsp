@@ -33,7 +33,6 @@ int lstm_8x16(
 	int8_t* pw = p_kernel;
 	int8_t* pw_r = p_kernel_rec;
 	int16_t* pb = p_bias;
-	int16_t* pb0 = (int16_t*)0;
 	int32_t* pt_c = c_state;
 
 	int i, j;

@@ -1,7 +1,10 @@
 #include "ambiq_stdint.h"
+#include "ambiq_nnsp_debug.h"
 #include "minmax.h"
 #include "complex.h"
+#if AMBIQ_NNSP_DEBUG
 #include <stdio.h>
+#endif
 void complex32_copy(COMPLEX32* dst,
     COMPLEX32* src)
 {
@@ -150,6 +153,7 @@ void complexArry32_init(COMPLEX32* inst,
     }
 
 }
+#if AMBIQ_NNSP_DEBUG
 void complexArry32_print(COMPLEX32* inst,
                         int len)
 {
@@ -160,3 +164,4 @@ void complexArry32_print(COMPLEX32* inst,
                                 inst[i].imag);
     }
 }
+#endif
