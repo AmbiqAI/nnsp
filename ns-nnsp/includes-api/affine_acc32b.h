@@ -8,14 +8,6 @@ extern "C"
 #include <stdint.h>
 #include "activation.h"
 
-// typedef struct
-// {
-// 	int16_t *po;
-// 	int8_t *w;
-// 	int8_t *wr;
-// 	int16_t *b;
-// }ADDR_NN;
-
 int affine_Krows_8x16_acc32b(
 	int16_t dim_output,
 	int16_t** pp_output,
