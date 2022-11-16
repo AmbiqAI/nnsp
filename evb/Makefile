@@ -105,9 +105,3 @@ view:
 	$(Q) $(JLINK_SWO) $(JLINK_SWO_CMD)
 
 %.d: ;
-
-foo := $(bar)
-bar = $(ugh)
-ugh := Huh?
-test:
-	@echo $(foo)

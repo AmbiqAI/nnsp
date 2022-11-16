@@ -1,3 +1,5 @@
+*.o
+*.d
 *.wav
 *.tfrecord
 *.flac

@@ -35,7 +35,7 @@ Alternatively, we provide a solution to overcome those issues in this example. W
 
 ## Compiling and Running a Pre-Trained Model
 
-From the `nnsp/evb` directory:
+From the `nnsp/evb/` directory:
 
 1. `make clean`
 2. (64bit acumulator) `make ` or `make BOARD=apollo4b` depending on board type. \

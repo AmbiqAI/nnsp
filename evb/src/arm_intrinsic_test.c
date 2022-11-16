@@ -49,9 +49,7 @@ int arm_test_s2i(
         s2iCntrlClass_exec(pt_cntrl_inst, pt_data);
     }
     elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%3.5f ms/inference\n", ((float) elapsed_time) / 1000 / 1000) ;
-    
-    
+    ns_printf("%3.5f ms/inference\n", ((float) elapsed_time) / 1000 / 1000);
 
     return 0;
 }
