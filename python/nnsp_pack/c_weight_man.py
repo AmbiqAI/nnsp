@@ -2,36 +2,48 @@
 C code weight table management
 """
 import numpy as np
-
-def c_matrix_man(mat):
+def c_matrix_man(mat, arm_M4=True): # pylint: disable=invalid-name
     """
     C code matrix weight table management
     """
-    rows, cols = mat.shape
+    rows, _ = mat.shape
     mat_reshape = np.array([])
     blks_r = rows >> 2
     residue_r = rows % 4
+    for i in range(blks_r): # case matrix bks in 4xN
+        sub_mat = mat[i*4 : i*4+4,:]
+        mat_reshape = reshape_mat_KxN(sub_mat, mat_reshape, arm_M4)
+
+    if residue_r: # case matrix bks in 1xN, 2xN or 3xN
+        sub_mat = mat[-residue_r:,:]
+        mat_reshape = reshape_mat_KxN(sub_mat, mat_reshape, arm_M4)
+
+    return mat_reshape
+
+def reshape_mat_KxN(mat, mat_reshape, arm_M4=False): # pylint: disable=invalid-name
+    """
+    reshape a KxN matrix wit shape KxN
+            for K = 1, 2, 3, 4 only
+    """
+    rows, cols = mat.shape
+    bks_r = rows >> 1
+    residue_r = rows % 2
     blks_c = cols >> 1
     residue_c = cols % 2
-
-    for i in range(blks_r):
-        blk = mat[i*4 : i*4+4,:]
-        for val in range(blks_c):
-            sub_blk = blk[:, val*2 : val*2+2].flatten()
-            mat_reshape = np.concatenate([mat_reshape, sub_blk])
-        if residue_c:
-            sub_blk = blk[:,-1].flatten()
+    for val in range(blks_c):
+        for j in range(bks_r):
+            mini_mat = mat[2*j:2*j+2, val*2:val*2+2]
+            if arm_M4:
+                sub_blk = mini_mat.T.flatten() # add .T transpose to interleave the entries
+            else:
+                sub_blk = mini_mat.flatten()
             mat_reshape = np.concatenate((mat_reshape, sub_blk))
-
-    if residue_r:
-        blk = mat[-residue_r:,:]
-        for val in range(blks_c):
-            sub_blk = blk[:, val*2:val*2+2].flatten()
+        if residue_r:
+            sub_blk = mat[-1, val*2:val*2+2].flatten()
             mat_reshape = np.concatenate((mat_reshape, sub_blk))
-        if residue_c:
-            sub_blk = blk[:,-1].flatten()
-            mat_reshape = np.concatenate((mat_reshape, sub_blk))
-
+    if residue_c:
+        sub_blk = mat[:,-1].flatten()
+        mat_reshape = np.concatenate((mat_reshape, sub_blk))
     return mat_reshape
 
 def c_lstm_weight_man(kernel_fw, kernel_re, bias):

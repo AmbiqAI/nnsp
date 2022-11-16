@@ -30,7 +30,6 @@ int NNSPClass_init(
 	    int16_t * pt_thresh_prob,
 	    int16_t *pt_th_count_trigger)
 {
-    int i;
 
     pt_inst->nn_id = nn_id;
     

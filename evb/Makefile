@@ -4,21 +4,32 @@ include make/neuralspot_toolchain.mk
 include make/jlink.mk
 include autogen.mk
 
+# local_app_name := main <-- moved to neuralspot_config
+TARGET = $(local_app_name)
 sources:=src/def_nn0_s2i.c
 sources+=src/def_nn1_vad.c
 sources+=src/def_nn2_kws_galaxy.c
 sources+=src/PcmBufClass.c
+sources+=src/arm_intrinsic_test.c
 sources+=src/$(local_app_name).cc
+
 ifeq ($(NNSP_MODE),1)
 sources+=src/nnCntrlClass.c
 else
 sources+=src/s2iCntrlClass.c
 endif
+sources += $(wildcard src/*.s)
+sources += $(wildcard src/ns-core/*.c)
+sources += $(wildcard src/ns-core/*.cc)
+sources += $(wildcard src/ns-core/*.cpp)
+sources += $(wildcard src/ns-core/*.s)
+
 targets  := $(BINDIR)/$(local_app_name).axf
 targets  += $(BINDIR)/$(local_app_name).bin
-mains    += $(BINDIR)/src/$(local_app_name).o
-
-objects      = $(filter-out $(mains),$(call source-to-object,$(sources)))
+ifeq ($(ACC32BIT_OPT),1)
+DEFINES+= DEF_ACC32BIT_OPT
+endif
+objects      = $(call source-to-object,$(sources))
 dependencies = $(subst .o,.d,$(objects))
 
 CFLAGS     += $(addprefix -D,$(DEFINES))
@@ -64,17 +75,17 @@ $(BINDIR)/%.o: %.s
 	@mkdir -p $(@D)
 	$(Q) $(CC) -c $(CFLAGS) $< -o $@
 
-%.axf: src/%.o
+$(BINDIR)/$(local_app_name).axf: $(objects)
 	@echo " Linking $(COMPILERNAME) $@"
 	@mkdir -p $(@D)
-	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $< $(objects) $(LFLAGS)
+	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(objects) $(LFLAGS)
 
-%.bin: %.axf 
+$(BINDIR)/$(local_app_name).bin: $(BINDIR)/$(local_app_name).axf 
 	@echo " Copying $(COMPILERNAME) $@..."
 	@mkdir -p $(@D)
 	$(Q) $(CP) $(CPFLAGS) $< $@
-	$(Q) $(OD) $(ODFLAGS) $< > $*.lst
-	$(Q) $(SIZE) $(objects) $(lib_prebuilt) $< > $*.size
+	$(Q) $(OD) $(ODFLAGS) $< > $(BINDIR)/$(local_app_name).lst
+	$(Q) $(SIZE) $(objects) $(lib_prebuilt) $< > $(BINDIR)/$(local_app_name).size
 
 $(JLINK_CF):
 	@echo " Creating JLink command sequence input file..."
@@ -94,8 +105,3 @@ view:
 	$(Q) $(JLINK_SWO) $(JLINK_SWO_CMD)
 
 %.d: ;
-.PHONY: print
-print: 
-	@echo $(sources)
-	@echo $(mains)
-	@echo $(objects)

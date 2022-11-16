@@ -8,16 +8,14 @@ extern "C"
 #include <stdint.h>
 #include "activation.h"
 
-typedef struct
-{
-	int16_t *po;
-	int8_t *w;
-	int8_t *wr;
-	int16_t *b;
-}ADDR_NN;
-
-void shift_64b(int64_t* x, int8_t shift, int len);
-
+/*  
+	"affine_Krows_8x16" is an affine (matrix*vec+bias) op. 
+	It uses the same memory arrangement & fetching scheme as 
+	"arm_fully_connected_mat_q7_vec_q15_opt" in CMSIS-NN.
+	For MAC, we use 64-bit accumulator instead (__SMLALD instead of __SMLAD) to avoid overflow.
+	
+	"affine_Krows_8x16" is the main kernel for FC & RNN-like NN layers.
+*/ 
 int affine_Krows_8x16(
 	int16_t dim_output,
 	int16_t** pp_output,
@@ -80,6 +78,9 @@ int rc_8x16(int16_t* p_output,
 	int16_t qbit_input_rec,
 	ACTIVATION_TYPE act_type,
 	void* (*act)(void*, int32_t*, int));
+
+void shift_64b(int64_t* x, int8_t shift, int len);
+
 #ifdef __cplusplus
 }
 #endif

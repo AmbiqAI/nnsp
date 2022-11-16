@@ -6,8 +6,10 @@
 #include "ns_ambiqsuite_harness.h"
 #include "ns_audio.h"
 #include "ambiq_nnsp_const.h"
-#define NUM_CHANNELS 1
+#include "arm_intrinsic_test.h"
+#include "ns_timer.h"
 
+#define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
 ns_button_config_t button_config_nnsp = {
@@ -16,16 +18,13 @@ ns_button_config_t button_config_nnsp = {
     .button_0_flag = &g_intButtonPressed,
     .button_1_flag = NULL
 };
-
 /// Set by app when it wants to start recording, used by callback
 bool static g_audioRecording = false;
-
 /// Set by callback when audio buffer has been copied, cleared by
 /// app when the buffer has been consumed.
 bool static g_audioReady = false;
 /// Audio buffer for application
 int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP * 2];
-
 /**
 * 
 * @brief Audio Callback (user-defined, executes in IRQ context)
@@ -45,7 +44,6 @@ audio_frame_callback(ns_audio_config_t *config, uint16_t bytesCollected) {
         if (g_audioReady) {
             ns_printf("Warning - audio buffer wasnt consumed in time\n");
         }
-
         // Raw PCM data is 32b (14b/channel) - here we only care about one
         // channel For ringbuffer mode, this loop may feel extraneous, but it is
         // needed because ringbuffers are treated a blocks, so there is no way
@@ -53,7 +51,6 @@ audio_frame_callback(ns_audio_config_t *config, uint16_t bytesCollected) {
         for (int i = 0; i < config->numSamples; i++) {
             g_in16AudioDataBuffer[i] = (int16_t)(pui32_buffer[i] & 0x0000FFF0);
         }
-
 #ifdef RINGBUFFER_MODE
         ns_ring_buffer_push(&(config->bufferHandle[0]),
                                       g_in16AudioDataBuffer,
@@ -92,32 +89,40 @@ ns_audio_config_t audio_config = {
 #endif
 };
 
-int main(void)
-{
+int main(void) {
     s2iCntrlClass cntrl_inst;
     g_audioRecording = false;
-
     ns_itm_printf_enable();
     
     am_hal_cachectrl_config(&am_hal_cachectrl_defaults);
     am_hal_cachectrl_enable();
-
     //
     // Initialize the printf interface for ITM output
     //
     ns_debug_printf_enable();
-
     ns_power_config(&ns_development_default);
     ns_audio_init(&audio_config);
     ns_peripheral_button_init(&button_config_nnsp);
 
     // initialize neural nets controller
     s2iCntrlClass_init(&cntrl_inst);
+
+#ifdef DEF_ACC32BIT_OPT
+    ns_printf("You are using 32bit accumulator.\n");
+#else
+    ns_printf("You are using 64bit accumulator.\n");
+#endif
+    ns_printf("The estimate time per inference (10ms data) whill be ...\n");
+    arm_test_s2i(
+        &cntrl_inst, 
+        g_in16AudioDataBuffer);
+
     
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
-    
+
     ns_printf("\nPress button to start!\n");
+
 
     while (1) 
     {
@@ -140,7 +145,6 @@ int main(void)
                 {
                     // execution of each time frame data
                     s2iCntrlClass_exec(&cntrl_inst, g_in16AudioDataBuffer);
-
                     g_audioReady = false;
                 }
             }

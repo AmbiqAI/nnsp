@@ -7,6 +7,7 @@
 #include "ns_peripherals_power.h"
 #include "ns_ambiqsuite_harness.h"
 #include "ns_audio.h"
+// #include "arm_intrinsic_test.h"
 
 #define NUM_CHANNELS 1
 int16_t pcmbuf_chunk[LEN_STFT_HOP];
@@ -123,9 +124,19 @@ int main(void)
     nnCntrlClass_init(&cntrl_inst, (void*) nn_seq, len_nn_seq);
     pt_seq_cntrl = (NNSP_ID*) cntrl_inst.pt_seq_cntrl;
     current_nnsp_id = pt_seq_cntrl[cntrl_inst.current_pos_seq];
+
+#ifdef DEF_ACC32BIT_OPT
+    ns_printf("You are using 32bit accumulator.\n");
+#else
+    ns_printf("You are using 64bit accumulator.\n");
+#endif
+    // arm_test_nnsp(
+    //     &cntrl_inst, 
+    //     g_in16AudioDataBuffer,
+    //     pcmbuf_chunk);
+    
     // reset all internal states
     nnCntrlClass_reset(&cntrl_inst);
-    
     ns_printf("\nPress button to start!\n");
 
     while (1) 
