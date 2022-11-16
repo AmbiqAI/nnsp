@@ -6,6 +6,11 @@ extern "C"
 #endif
 #include <stdint.h>
 #include "activation.h"
+//typedef struct
+//{
+//	int16_t h_states[130];
+//	int32_t c_states[130];
+//}LSTM_LAYER;
 
 int lstm_8x16(
 	int16_t* p_output,

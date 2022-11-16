@@ -8,7 +8,7 @@
 #include "ambiq_nnsp_const.h"
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
-#include <cmsis_gcc.h>
+
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
@@ -90,12 +90,6 @@ ns_audio_config_t audio_config = {
 };
 
 int main(void) {
-
-    int64_t val64 = 0;
-    int32_t val32 = 122, val32_1 = ~(((int32_t) 1) << 31);
-    int8_t val8 = 122;
-    int i,j;
-    uint32_t elapsed_time;
     s2iCntrlClass cntrl_inst;
     g_audioRecording = false;
     ns_itm_printf_enable();
@@ -112,51 +106,24 @@ int main(void) {
 
     // initialize neural nets controller
     s2iCntrlClass_init(&cntrl_inst);
+
+#ifdef DEF_ACC32BIT_OPT
+    ns_printf("You are using 32bit accumulator.\n");
+#else
+    ns_printf("You are using 64bit accumulator.\n");
+#endif
+    ns_printf("The estimate time per inference (10ms data) whill be ...\n");
+    arm_test_s2i(
+        &cntrl_inst, 
+        g_in16AudioDataBuffer);
+
     
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
+
     ns_printf("\nPress button to start!\n");
-    
-    
-    #if 0
-    val64 = 0;
-    ns_timer_init(0);
-    for (i = 0; i < 10000; i++)
-    {
-        val32 = __SMLAD(val32, val32, val32);
-    }
-    elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%u\n", elapsed_time);
 
-    val64 = 0;
-    ns_timer_init(0);
-    for (i = 0; i < 10000; i++)
-    {
-        val64 = __SMLALD(val32, val32, val64);
-    }
-    elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%u\n", elapsed_time);
-    
-    val64 = 0;
-    ns_timer_init(0);
-    for (i = 0; i < 10000; i++)
-    {
-        val64 += (int64_t) val8 * (int64_t) val8 + (int64_t) val8 * (int64_t) val8; 
-    }
-    elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%u\n", elapsed_time);
-    #endif
 
-    ns_timer_init(0);
-    for (i = 0; i < 1000; i++)
-    {
-        s2iCntrlClass_exec(&cntrl_inst, g_in16AudioDataBuffer);
-    }
-    elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%3.5f ms/inference\n", ((float) elapsed_time) / 1000 / 1000) ;
-    
-    // reset all internal states
-    s2iCntrlClass_reset(&cntrl_inst);
     while (1) 
     {
         g_audioRecording = false;

@@ -23,6 +23,11 @@ int affine_Krows_8x16_acc32b(
 		int8_t is_out,
 		void* (*act)(void*, int32_t*, int)) 
 {
+	/*  
+	Note: this function might cause overflow. To avoid overlow, consider to use
+		  the less computational efficiency "affine_Krows_8x16". 
+	See "affine_acc32b.h" for more detail
+*/ 
 	int8_t* p_kernel = *pp_kernel;
 	int32_t* p_kernel_32b = (int32_t*) *pp_kernel;
 	int16_t* p_bias = *pp_bias;
@@ -485,21 +490,22 @@ int	fc_8x16_acc32b(
 	return 0;
 }
 
-int rc_8x16_acc32b(   int16_t* p_output,
-				int8_t* p_kernel,
-				int8_t* p_kernel_rec,
-				int16_t* p_bias,
-				int16_t* input,
-				int16_t* input_rec,
-				int16_t dim_output,
-				int16_t dim_input,
-				int16_t dim_input_rec,
-				int16_t qbit_kernel,
-				int16_t qbit_bias,
-				int16_t qbit_input,
-				int16_t qbit_input_rec,
-				ACTIVATION_TYPE act_type,
-				void* (*act)(void*, int32_t*, int))
+int rc_8x16_acc32b(   
+		int16_t* p_output,
+		int8_t* p_kernel,
+		int8_t* p_kernel_rec,
+		int16_t* p_bias,
+		int16_t* input,
+		int16_t* input_rec,
+		int16_t dim_output,
+		int16_t dim_input,
+		int16_t dim_input_rec,
+		int16_t qbit_kernel,
+		int16_t qbit_bias,
+		int16_t qbit_input,
+		int16_t qbit_input_rec,
+		ACTIVATION_TYPE act_type,
+		void* (*act)(void*, int32_t*, int))
 {
 	int16_t* po = p_output;
 	int8_t* pw = p_kernel;

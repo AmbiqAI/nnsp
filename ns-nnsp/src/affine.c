@@ -23,6 +23,10 @@ int affine_Krows_8x16(
 		int8_t is_out,
 		void* (*act)(void*, int32_t*, int)) 
 {
+	/*  
+		"affine_Krows_8x16" is an affine (matrix*vec+bias) op. 
+		See "affine.h" for more detail
+	*/ 
 	int8_t* p_kernel = *pp_kernel;
 	int32_t* p_kernel_32b = (int32_t*) *pp_kernel;
 	int16_t* p_bias = *pp_bias;
@@ -67,7 +71,7 @@ int affine_Krows_8x16(
 	else
 		qbit_s = MAX(15, qbit_input + qbit_kernel);
 
-	for (i = 0; i < (dim_input >> 1); i++)
+	for (i = 0; i < (dim_input >> 1); i++) 
 	{
 		/*
 		only 4 cases to deal with

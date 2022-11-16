@@ -8,6 +8,14 @@ extern "C"
 #include <stdint.h>
 #include "activation.h"
 
+/*  
+	"affine_Krows_8x16" is an affine (matrix*vec+bias) op. 
+	It uses the same memory arrangement & fetching scheme as 
+	"arm_fully_connected_mat_q7_vec_q15_opt" in CMSIS-NN.
+	For MAC, we use 64-bit accumulator instead (__SMLALD instead of __SMLAD) to avoid overflow.
+	
+	"affine_Krows_8x16" is the main kernel for FC & RNN-like NN layers.
+*/ 
 int affine_Krows_8x16(
 	int16_t dim_output,
 	int16_t** pp_output,

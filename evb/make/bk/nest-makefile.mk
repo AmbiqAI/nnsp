@@ -4,31 +4,16 @@ include make/neuralspot_toolchain.mk
 include make/jlink.mk
 include autogen.mk
 
-# local_app_name := main <-- moved to neuralspot_config
+# local_app_name := main <-- moved to autogen
 TARGET = $(local_app_name)
-sources:=src/def_nn0_s2i.c
-sources+=src/def_nn1_vad.c
-sources+=src/def_nn2_kws_galaxy.c
-sources+=src/PcmBufClass.c
-sources+=src/arm_intrinsic_test.c
-sources+=src/$(local_app_name).cc
-
-ifeq ($(NNSP_MODE),1)
-sources+=src/nnCntrlClass.c
-else
-sources+=src/s2iCntrlClass.c
-endif
+sources := $(wildcard src/*.c)
+sources += $(wildcard src/*.cc)
+sources += $(wildcard src/*.cpp)
 sources += $(wildcard src/*.s)
-sources += $(wildcard src/ns-core/*.c)
-sources += $(wildcard src/ns-core/*.cc)
-sources += $(wildcard src/ns-core/*.cpp)
-sources += $(wildcard src/ns-core/*.s)
 
 targets  := $(BINDIR)/$(local_app_name).axf
 targets  += $(BINDIR)/$(local_app_name).bin
-ifeq ($(ACC32BIT_OPT),1)
-DEFINES+= DEF_ACC32BIT_OPT
-endif
+
 objects      = $(call source-to-object,$(sources))
 dependencies = $(subst .o,.d,$(objects))
 
@@ -105,9 +90,3 @@ view:
 	$(Q) $(JLINK_SWO) $(JLINK_SWO_CMD)
 
 %.d: ;
-
-foo := $(bar)
-bar = $(ugh)
-ugh := Huh?
-test:
-	@echo $(foo)
