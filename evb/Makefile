@@ -27,7 +27,7 @@ sources += $(wildcard src/ns-core/*.s)
 targets  := $(BINDIR)/$(local_app_name).axf
 targets  += $(BINDIR)/$(local_app_name).bin
 ifeq ($(ACC32BIT_OPT),1)
-DEFINES+= DEF_ACC32BIT_OPT
+DEFINES+=DEF_ACC32BIT_OPT
 endif
 objects      = $(call source-to-object,$(sources))
 dependencies = $(subst .o,.d,$(objects))

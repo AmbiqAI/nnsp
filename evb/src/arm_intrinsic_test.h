@@ -5,11 +5,10 @@ extern "C"
 {
 #endif
 #include <stdint.h>
-
 int arm_test_s2i(
     void *pt_cntrl_inst, 
     int16_t *pt_data);
-
+// int test_arm_fft();
 // int arm_test_nnsp(
 //     void *pt_cntrl_inst, 
 //     int16_t *pt_data,

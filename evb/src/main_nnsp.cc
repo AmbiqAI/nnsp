@@ -28,7 +28,7 @@ bool static g_audioRecording = false;
 /// app when the buffer has been consumed.
 bool static g_audioReady = false;
 /// Audio buffer for application
-int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP * 2];
+int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
 
 /**
 * 
@@ -46,17 +46,15 @@ audio_frame_callback(ns_audio_config_t *config, uint16_t bytesCollected) {
         (uint32_t *)am_hal_audadc_dma_get_buffer(config->audioSystemHandle);
 
     if (g_audioRecording) {
-        if (g_audioReady) {
+        if (g_audioReady)
             ns_printf("Warning - audio buffer wasnt consumed in time\n");
-        }
 
-        // Raw PCM data is 32b (14b/channel) - here we only care about one
+        // Raw PCM data is 32b (12b/channel) - here we only care about one
         // channel For ringbuffer mode, this loop may feel extraneous, but it is
         // needed because ringbuffers are treated a blocks, so there is no way
         // to convert 32b->16b
-        for (int i = 0; i < config->numSamples; i++) {
+        for (int i = 0; i < config->numSamples; i++)
             g_in16AudioDataBuffer[i] = (int16_t)(pui32_buffer[i] & 0x0000FFF0);
-        }
 
 #ifdef RINGBUFFER_MODE
         ns_ring_buffer_push(&(config->bufferHandle[0]),
@@ -125,18 +123,15 @@ int main(void)
     pt_seq_cntrl = (NNSP_ID*) cntrl_inst.pt_seq_cntrl;
     current_nnsp_id = pt_seq_cntrl[cntrl_inst.current_pos_seq];
 
-#ifdef DEF_ACC32BIT_OPT
+    // reset all internal states
+    nnCntrlClass_reset(&cntrl_inst);
+
+    #ifdef DEF_ACC32BIT_OPT
     ns_printf("You are using 32bit accumulator.\n");
 #else
     ns_printf("You are using 64bit accumulator.\n");
 #endif
-    // arm_test_nnsp(
-    //     &cntrl_inst, 
-    //     g_in16AudioDataBuffer,
-    //     pcmbuf_chunk);
-    
-    // reset all internal states
-    nnCntrlClass_reset(&cntrl_inst);
+
     ns_printf("\nPress button to start!\n");
 
     while (1) 
