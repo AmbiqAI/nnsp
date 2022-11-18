@@ -8,6 +8,7 @@ extern "C"
 int arm_test_s2i(
     void *pt_cntrl_inst, 
     int16_t *pt_data);
+uint32_t test_feat();
 // int test_arm_fft();
 // int arm_test_nnsp(
 //     void *pt_cntrl_inst, 

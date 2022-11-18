@@ -115,7 +115,7 @@ int main(void) {
     arm_test_s2i(
         &cntrl_inst, 
         g_in16AudioDataBuffer);
-
+    // test_feat();
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
 
@@ -140,7 +140,9 @@ int main(void) {
                 if (g_audioReady) 
                 {
                     // execution of each time frame data
-                    s2iCntrlClass_exec(&cntrl_inst, g_in16AudioDataBuffer);
+                    s2iCntrlClass_exec(
+                        &cntrl_inst,
+                        g_in16AudioDataBuffer);
                     g_audioReady = false;
                 }
             }

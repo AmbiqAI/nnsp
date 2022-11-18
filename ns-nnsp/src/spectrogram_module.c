@@ -2,39 +2,15 @@
 #include "ambiq_stdint.h"
 #include "ambiq_nnsp_const.h"
 #include "ambiq_nnsp_debug.h"
+#if ARM_OPTIMIZED==0
 #include "fft.h"
+#else
 #include "fft_arm.h"
-
+#endif
 
 extern const int16_t len_stft_win_coeff;
 extern const int16_t hop;
 extern const int16_t stft_win_coeff[];
-
-void spec2pspec(int32_t* y, int32_t* x, int len)
-{
-	int i;
-	int64_t tmp;
-	for (i = 0; i < len; i++)
-	{
-		tmp = (int64_t)x[2 * i] * (int64_t)x[2 * i] + (int64_t)x[2 * i + 1] * (int64_t)x[2 * i + 1];
-		y[i] = (int32_t) (tmp >> 15);
-	}
-}
-
-void spec2pspec_arm(int32_t* y, // q15
-					int32_t* x, // q21
-					int len)
-{
-	int i;
-	int64_t tmp;
-	int rshift = (21 << 1) - 15;
-	for (i = 0; i < len; i++)
-	{
-		tmp = (int64_t)x[2 * i] * (int64_t)x[2 * i] + (int64_t)x[2 * i + 1] * (int64_t)x[2 * i + 1];
-		y[i] = (int32_t) (tmp >> rshift);
-	}
-}
-
 int stftModule_construct(stftModule *ps)
 {
 	ps->len_win = len_stft_win_coeff;
@@ -53,10 +29,25 @@ int stftModule_setDefault(stftModule* ps)
 		ps->dataBuffer[i] = 0;
 	return 0;
 }
+#if ARM_OPTIMIZED==0
+void spec2pspec(
+		int32_t* y,
+		int32_t* x,
+		int len)
+{
+	int i;
+	int64_t tmp;
+	for (i = 0; i < len; i++)
+	{
+		tmp = (int64_t)x[2 * i] * (int64_t)x[2 * i] + (int64_t)x[2 * i + 1] * (int64_t)x[2 * i + 1];
+		y[i] = (int32_t) (tmp >> 15);
+	}
+}
+
 int stftModule_analyze(
-				stftModule* ps,
-				int16_t* x,
-				int32_t* y)
+		stftModule* ps,
+		int16_t* x,
+		int32_t* y)
 {
 	int i;
 	int32_t tmp;
@@ -83,6 +74,21 @@ int stftModule_analyze(
 		 (void*)y); //Frac15
 	
 	return 0;
+}
+#else
+void spec2pspec_arm(
+		int32_t* y, // q15
+		int32_t* x, // q21
+		int len)
+{
+	int i;
+	int64_t tmp;
+	int rshift = (21 << 1) - 15;
+	for (i = 0; i < len; i++)
+	{
+		tmp = (int64_t)x[2 * i] * (int64_t)x[2 * i] + (int64_t)x[2 * i + 1] * (int64_t)x[2 * i + 1];
+		y[i] = (int32_t) (tmp >> rshift);
+	}
 }
 
 int stftModule_analyze_arm(
@@ -116,3 +122,4 @@ int stftModule_analyze_arm(
 
 	return 0;
 }
+#endif
