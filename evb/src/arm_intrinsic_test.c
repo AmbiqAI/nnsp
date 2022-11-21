@@ -67,6 +67,25 @@ uint32_t test_feat()
                 ((float) elapsed_time) / NUM_FRAMES_EST / 1000);
     return 0;
 }
+
+uint32_t test_fft()
+{
+    int32_t input[512 + 2];
+    int32_t output[512 << 1];
+    uint32_t elapsed_time;
+    int i;
+    arm_fft_init();
+    ns_timer_init(0);
+    for (i = 0; i < NUM_FRAMES_EST; i++)
+    {
+        arm_fft_exec(output, input);
+    }
+    elapsed_time = ns_us_ticker_read(0);   
+    ns_printf("fft: %3.2f ms/inference\n",
+                ((float) elapsed_time) / NUM_FRAMES_EST / 1000);
+    return 0;
+}
+
 #if 0
 int arm_test_nnsp(
         void *pt_cntrl_inst_, 
