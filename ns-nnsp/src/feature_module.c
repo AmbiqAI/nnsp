@@ -5,8 +5,9 @@
 #include "ambiq_nnsp_const.h"
 #include "melSpecProc.h"
 #include "fixlog10.h"
+#include "ambiq_nnsp_debug.h"
 #define LOG10_2POW_N15_Q15 (-147963)
-int32_t spec[LEN_FFT_NNSP+2];
+int32_t spec[LEN_FFT_NNSP << 1];
 
 void FeatureClass_construct(
 	FeatureClass* ps,
@@ -54,8 +55,13 @@ void FeatureClass_execute(FeatureClass*ps,
 	{
 		ps->normFeatContext[i] = ps->normFeatContext[i + ps->dim_feat];
 	}
+#if ARM_OPTIMIZED==0
 	stftModule_analyze(&ps->state_stftModule, input, spec);
 	spec2pspec(pspec, spec, 1 + (LEN_FFT_NNSP >> 1));
+#else
+	stftModule_analyze_arm(&ps->state_stftModule, input, spec);
+	spec2pspec_arm(pspec, spec, 1 + (LEN_FFT_NNSP >> 1));
+#endif
 	melSpecProc(pspec, ps->feature);
 	log10_vec(ps->feature, ps->feature, ps->dim_feat, 15);
 	for (i = 0; i < ps->dim_feat; i++)

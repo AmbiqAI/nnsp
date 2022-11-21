@@ -1,3 +1,5 @@
+#include "ambiq_nnsp_debug.h"
+#if ARM_OPTIMIZED==0
 #include "ambiq_stdint.h"
 #include "complex.h"
 #include "minmax.h"
@@ -217,3 +219,4 @@ void fft(int exp_nfft, void* input_, void* output_)
         complex32_copy(output + m, input + (br_coeff[m] >> Rs));
     }
 }
+#endif

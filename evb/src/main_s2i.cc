@@ -24,7 +24,7 @@ bool static g_audioRecording = false;
 /// app when the buffer has been consumed.
 bool static g_audioReady = false;
 /// Audio buffer for application
-int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP * 2];
+int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
 /**
 * 
 * @brief Audio Callback (user-defined, executes in IRQ context)
@@ -38,18 +38,23 @@ int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP * 2];
 void
 audio_frame_callback(ns_audio_config_t *config, uint16_t bytesCollected) {
     uint32_t *pui32_buffer =
-        (uint32_t *)am_hal_audadc_dma_get_buffer(config->audioSystemHandle);
+        (uint32_t *) am_hal_audadc_dma_get_buffer(config->audioSystemHandle);
 
     if (g_audioRecording) {
-        if (g_audioReady) {
+        if (g_audioReady)
             ns_printf("Warning - audio buffer wasnt consumed in time\n");
-        }
-        // Raw PCM data is 32b (14b/channel) - here we only care about one
+
+        // Raw PCM data is 32b (12b/channel) - here we only care about one
         // channel For ringbuffer mode, this loop may feel extraneous, but it is
         // needed because ringbuffers are treated a blocks, so there is no way
         // to convert 32b->16b
         for (int i = 0; i < config->numSamples; i++) {
-            g_in16AudioDataBuffer[i] = (int16_t)(pui32_buffer[i] & 0x0000FFF0);
+            g_in16AudioDataBuffer[i] = (int16_t)( pui32_buffer[i] & 0x0000FFF0);
+
+            if (i == 4) {
+                // Workaround for AUDADC sample glitch, here while it is root caused
+                g_in16AudioDataBuffer[3] = (g_in16AudioDataBuffer[2] + g_in16AudioDataBuffer[4]) >> 1; 
+            }
         }
 #ifdef RINGBUFFER_MODE
         ns_ring_buffer_push(&(config->bufferHandle[0]),
@@ -75,7 +80,7 @@ ns_audio_config_t audio_config = {
 #else
     .eAudioApiMode = NS_AUDIO_API_CALLBACK,
     .callback = audio_frame_callback,
-    .audioBuffer = (void *)&g_in16AudioDataBuffer,
+    .audioBuffer = (void *) &g_in16AudioDataBuffer,
 #endif
     .eAudioSource = NS_AUDIO_SOURCE_AUDADC,
     .numChannels = NUM_CHANNELS,
@@ -108,22 +113,20 @@ int main(void) {
     s2iCntrlClass_init(&cntrl_inst);
 
 #ifdef DEF_ACC32BIT_OPT
-    ns_printf("You are using 32bit accumulator.\n");
+    ns_printf("You are using \"32bit\" accumulator.\n");
 #else
-    ns_printf("You are using 64bit accumulator.\n");
+    ns_printf("You are using \"64bit\" accumulator.\n");
 #endif
-    ns_printf("The estimate time per inference (10ms data) whill be ...\n");
+    ns_printf("The estimate time per inference (10 ms data) will be ...\n");
     arm_test_s2i(
         &cntrl_inst, 
         g_in16AudioDataBuffer);
-
-    
+    test_fft();
+    test_feat();
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
 
     ns_printf("\nPress button to start!\n");
-
-
     while (1) 
     {
         g_audioRecording = false;
@@ -144,7 +147,9 @@ int main(void) {
                 if (g_audioReady) 
                 {
                     // execution of each time frame data
-                    s2iCntrlClass_exec(&cntrl_inst, g_in16AudioDataBuffer);
+                    s2iCntrlClass_exec(
+                        &cntrl_inst,
+                        g_in16AudioDataBuffer);
                     g_audioReady = false;
                 }
             }
