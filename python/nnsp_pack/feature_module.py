@@ -22,6 +22,91 @@ def my_colorbar(ax_handle, im=None):
     else:
         cax.axis('off')
 
+def display_stft_all(pcm_sn_, spec_sn_, melspec_db_sn_,
+                     pcm_s_, spec_s_, melspec_db_s_,
+                     sample_rate, label_frame=None):
+    """
+    Display stft for s and s+n
+    """
+    pcm_sn = pcm_sn_.copy()
+    spec_sn = spec_sn_.copy()
+    melspec_db_sn = melspec_db_sn_.copy()
+    if pcm_sn.ndim > 1:
+        pcm_sn = pcm_sn[:,0]
+
+    pcm_s = pcm_s_.copy()
+    spec_s = spec_s_.copy()
+    melspec_db_s = melspec_db_s_.copy()
+    if pcm_s.ndim > 1:
+        pcm_s = pcm_s[:,0]
+
+    db_lim = [-50, 10]
+
+    # Draw the spectrogram
+    specs = [spec_sn, spec_s]
+    texts = ['spec (s+n)', 'spec (s)']
+    i = 1
+    for spec, text in zip(specs, texts):
+        ax_handle = plt.subplot(6,1,i)
+        i += 1
+        _, len0 = spec.shape
+        ax_fr = np.arange(0, len0)
+        spec_db_sn = 20 * np.log10(np.maximum(np.abs(spec), 10**-5))
+
+        im = ax_handle.imshow( spec_db_sn,
+                        origin  = 'lower',
+                        cmap    = 'pink_r',
+                        aspect  = 'auto',
+                        vmin    = db_lim[0],
+                        vmax    = db_lim[1],
+                        extent  = [0 , ax_fr.max(), 0 , sample_rate >> 1])
+
+        if label_frame is not None:
+            ax_handle.plot(label_frame * (sample_rate >> 2))
+        ax_handle.set_ylim([0, sample_rate >> 1])
+        my_colorbar(ax_handle, im)
+        ax_handle.text(0.2, 0.2, text)
+
+    # Draw the mel spec
+    melspecs_db = [melspec_db_sn, melspec_db_s]
+    texts = ['melspec (s+n)', 'melspec (s)']
+    for melspec_db, text in zip(melspecs_db, texts):
+    
+        ax_handle = plt.subplot(6,1,i)
+        i += 1
+        len_feat, len0 = melspec_db.shape
+        ax_fr = np.arange(0,len0)
+
+        im = ax_handle.imshow( melspec_db,
+                        origin  = 'lower',
+                        cmap    = 'pink_r',
+                        aspect  = 'auto',
+                        vmin    = melspec_db.min(),
+                        vmax    = melspec_db.max(),
+                        extent  = [0 , ax_fr.max(), 0 , len_feat])
+
+        ax_handle.set_ylim([0, len_feat])
+        my_colorbar(ax_handle, im)
+        ax_handle.text(0.2, 0.2, text)
+        if label_frame is not None:
+            ax_handle.plot(label_frame * 20)
+
+    # Draw the time seq
+    pcms_sn = [pcm_sn, pcm_s]
+    texts = ['melspec (s+n)', 'melspec (s)']
+    for pcm, text in zip(pcms_sn, texts):
+
+        ax_handle = plt.subplot(6,1,i)
+        i+=1
+        ax_time = np.arange(0, pcm.size)/sample_rate
+        ax_handle.plot(ax_time, pcm, linewidth=0.5)
+        ax_handle.set_xlim([0, pcm.size/sample_rate])
+        ax_handle.set_ylim([-1,1])
+        my_colorbar(ax_handle)
+        ax_handle.text(0.2, 0.2, 'sig')
+
+    plt.show()
+
 def display_stft(pcm_, spec_, melspec_db_, sample_rate, label_frame=None):
     """
     Display stft
@@ -81,7 +166,6 @@ def display_stft(pcm_, spec_, melspec_db_, sample_rate, label_frame=None):
     my_colorbar(ax_handle)
     ax_handle.text(0.2, 0.2, 'sig')
     plt.show()
-
 def strided_app(data, len_win, hop ):  # Window len = L, Stride len/stepsize = S
     """
     Fast buffering
@@ -197,7 +281,11 @@ class FeatureClass:
             mel_specs = np.array(mel_specs)
             feats = np.array(feats)
             pspecs = np.array(pspecs)
-
+        # specs       = specs.astype(np.complex32)
+        mel_specs   = mel_specs.astype(np.float32)
+        feats       = feats.astype(np.float32)
+        pspecs      = pspecs.astype(np.float32)
+        
         return specs, mel_specs, feats, pspecs
 
 if __name__ == '__main__':
@@ -211,7 +299,7 @@ if __name__ == '__main__':
 
     # True  : make all C tables of feature extraction.
     # False : disable making tables
-    MAKE_C_TABLE     = True
+    MAKE_C_TABLE     = False
 
     if MAKE_DATA:
         WAVEFILE ='../test_nnsp/wav/test_speech.wav'
