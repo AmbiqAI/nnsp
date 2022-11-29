@@ -1,5 +1,5 @@
 1. `Fluent speech commands` \
-To download the Fluent Speech command dataset, please read the full license carefully in [Fluent Speech Commands Public License](https://fluent.ai/wp-content/uploads/2021/04/Fluent_Speech_Commands_Public_License.pdf). Download and extract the data and put it under the folder `nnsp/python/wavs/` as shown in Table 1.
+To download the Fluent Speech command dataset, please read the full license carefully in [Fluent Speech Commands Public License](https://fluent.ai/wp-content/uploads/2021/04/Fluent_Speech_Commands_Public_License.pdf). Download the data from [here](https://www.kaggle.com/datasets/tommyngx/fluent-speech-corpus) and extract the data and put it under the folder `nnsp/python/wavs/` as shown in Table 1.
 1. `LibriSpeech 100-hour and 360-hour ASR corpus` \
 LibriSpeech ASR corpus is used to make out-of-vocabulary (OOV) data and can be downloaded from [here](https://www.openslr.org/resources/12/train-clean-100.tar.gz) and [here](https://www.openslr.org/resources/12/train-clean-360.tar.gz) for 100-hour and 360-hour clean datasets, respectively.
 Download and extract the data and put it under the folder `nnsp/python/wavs/garb/en/` as shown in Table 1.
