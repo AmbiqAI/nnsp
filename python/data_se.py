@@ -304,7 +304,7 @@ def main(args):
 
     if not DEBUG:
         for train_set in train_sets:
-            with open(f'data/{train_set}_tfrecords_vad.csv', 'w') as file: # pylint: disable=unspecified-encoding
+            with open(f'data/{train_set}_tfrecords_se.csv', 'w') as file: # pylint: disable=unspecified-encoding
                 for tfrecord in tot_success_dict[train_set]:
                     tfrecord = re.sub(r'\\', '/', tfrecord)
                     file.write(f'{tfrecord}\n')
