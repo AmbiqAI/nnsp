@@ -158,7 +158,7 @@ class NNInferClass:
         self.feats = np.concatenate((self.feats, np.expand_dims(feat, axis=0)), axis=0)
         return feat, spec
 
-    def frame_proc_tf(self, data):
+    def frame_proc_tf(self, data, return_all=False):
         """
         NN frame process using tensorflow
         """
@@ -166,12 +166,16 @@ class NNInferClass:
         feats_expand = np.expand_dims(self.feats, axis=0)
 
         if self.count_run == 0:
+
             est, self.states = self.nn_infer(feats_expand, 1.0, self.states, training=False)
             est = est[0,0].numpy()
             self.post_nn_infer(est)
-        return feat, spec
+        if return_all:
+            return feat, spec, est
+        else:        
+            return feat, spec
 
-    def frame_proc_np(self, data):
+    def frame_proc_np(self, data, return_all=False):
         """
         NN frame process using numpy
         """
@@ -183,7 +187,10 @@ class NNInferClass:
                         self.states_np['cstate'])
             est, self.states_np['hstate'], self.states_np['cstate'] = out
             self.post_nn_infer(est)
-        return feat, spec
+        if return_all:
+            return feat, spec, est
+        else:        
+            return feat, spec
 
     def post_nn_infer(self, nn_output):
         """

@@ -34,8 +34,7 @@ params_audio = {
     'hop'           : 160,
     'len_fft'       : 512,
     'sample_rate'   : 16000,
-    'nfilters_mel'  : 72
-}
+    'nfilters_mel'  : 72 }
 
 def download_data():
     """
@@ -95,6 +94,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
         """
         convert np array to tfrecord
         """
+        MAX_LEN_SP = 25 * 16000
         random.shuffle(fnames)
         for i in range(len(fnames) >> 1):
             success = 1
@@ -129,7 +129,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
                         pass
                     # decorate speech
                     speech0 = audio
-                    
+
                     stime = np.random.randint(
                         sample_rate >> 2,
                         sample_rate << 1)
@@ -143,7 +143,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
                     speech0 = np.concatenate((zeros_s, speech0, zeros_e))
 
                     prob = np.random.uniform(0,1)
-                    if prob < 0.1:
+                    if prob < 0.05:
                         speech0 *= 0
                         target = 0
                     else:
@@ -152,8 +152,16 @@ class FeatMultiProcsClass(multiprocessing.Process):
                     etimes += [etime + len_sp_last]
                     targets += [target]
                     speech = np.concatenate((speech, speech0))
-                    len_sp_last += len(speech)
 
+                    len_sp_last += len(speech)
+            if len(speech) > MAX_LEN_SP:
+                speech = speech[:MAX_LEN_SP]
+            elif len(speech) < MAX_LEN_SP:
+                speech = np.pad(
+                    speech,
+                    (0, MAX_LEN_SP - len(speech)),
+                    'constant',
+                    constant_values=(0, 0))
             stimes  = np.array(stimes)
             etimes  = np.array(etimes)
             targets = np.array(targets)
@@ -163,10 +171,15 @@ class FeatMultiProcsClass(multiprocessing.Process):
             end_frames      = end_frames.astype(np.int32)
             # add noise to sig
             noise = add_noise.get_noise(self.noise_files[self.train_set], len(speech))
-            audio_sn, audio_s = add_noise.add_noise(speech, noise, self.snr_db, stime, etime, return_all=True)
+            audio_sn, audio_s = add_noise.add_noise(
+                                    speech,
+                                    noise,
+                                    self.snr_db,
+                                    stime, etime,
+                                    return_all=True)
             # feature extraction of sig
             spec_sn, _, feat_sn, pspec_sn = self.feat_inst.block_proc(audio_sn)
-            spec_s, _, feat_s, pspec_s = self.feat_inst.block_proc(audio_s)
+            spec_s, _, feat_s, pspec_s    = self.feat_inst.block_proc(audio_s)
             if DEBUG:
                 sd.play(audio_sn, sample_rate)
                 print(fnames[2*i])
@@ -196,8 +209,8 @@ class FeatMultiProcsClass(multiprocessing.Process):
                     width_targets = end_frames - start_frames + 1
                     tfrecord_converter_se.make_tfrecord( # pylint: disable=too-many-function-args
                                         tfrecord,
-                                        feat_sn,
-                                        feat_s,
+                                        pspec_sn,
+                                        pspec_s,
                                         # spec_s,
                                         # spec_sn,
                                         timesteps)
@@ -330,7 +343,7 @@ if __name__ == "__main__":
         '-n',
         '--num_procs',
         type    = int,
-        default = 2,
+        default = 4,
         help='How many processor cores to use for execution')
 
     argparser.add_argument(

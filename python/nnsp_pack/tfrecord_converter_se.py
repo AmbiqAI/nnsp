@@ -5,10 +5,10 @@ import os
 import numpy as np
 import tensorflow as tf
 
-def make_tfrecord(  
+def make_tfrecord(
         fname,
-        feat_sn,
-        feat_s,
+        pspec_sn,
+        pspec_s,
         # spec_clean,
         # spec_noisy,
         timesteps):
@@ -16,34 +16,21 @@ def make_tfrecord(
     Make tfrecord
     """
     # timesteps, dim_feat = feat.shape
-    feat_sn = feat_sn.reshape([-1])
-    feat_s  = feat_s.reshape([-1])
-    
-    # spec_clean = spec_clean.reshape([-1])
-    # spec_noisy = spec_noisy.reshape([-1])
-    
+    pspec_sn = pspec_sn.reshape([-1])
+    pspec_s  = pspec_s.reshape([-1])
+
     writer          = tf.io.TFRecordWriter(fname)
     step_feature    = tf.train.Feature(int64_list = tf.train.Int64List(value = [timesteps]))
-    feat_sn_feature = tf.train.Feature(float_list = tf.train.FloatList(value = feat_sn))
-    feat_s_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = feat_s))
-    
-    # spec_clean_real_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = np.real(spec_clean).astype(np.float32)))
-    # spec_clean_imag_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = np.imag(spec_clean).astype(np.float32)))
-    # spec_noisy_real_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = np.real(spec_noisy).astype(np.float32)))
-    # spec_noisy_imag_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = np.imag(spec_noisy).astype(np.float32)))
-    
+    pspec_sn_feature = tf.train.Feature(float_list = tf.train.FloatList(value = pspec_sn))
+    pspec_s_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = pspec_s))
 
     context = tf.train.Features(feature = {
             "length"    : step_feature,
         })
 
     feature_lists = tf.train.FeatureLists(feature_list={
-            "feat_sn"               : tf.train.FeatureList(feature = [feat_sn_feature]),
-            "feat_s"                : tf.train.FeatureList(feature = [feat_s_feature]),
-            # "spec_clean_real"       : tf.train.FeatureList(feature = [spec_clean_real_feature]),
-            # "spec_clean_imag"       : tf.train.FeatureList(feature = [spec_clean_imag_feature]),
-            # "spec_noisy_real"       : tf.train.FeatureList(feature = [spec_noisy_real_feature]),
-            # "spec_noisy_imag"       : tf.train.FeatureList(feature = [spec_noisy_imag_feature]),
+            "pspec_sn"               : tf.train.FeatureList(feature = [pspec_sn_feature]),
+            "pspec_s"                : tf.train.FeatureList(feature = [pspec_s_feature]),
         })
 
     seq_example = tf.train.SequenceExample( # context and feature_lists
@@ -80,8 +67,8 @@ def parser( example_proto, dim_feat):
     }
 
     sequence_features = {
-        'feat_sn'      : tf.io.VarLenFeature(tf.float32),
-        'feat_s'       : tf.io.VarLenFeature(tf.float32),
+        'pspec_sn'      : tf.io.VarLenFeature(tf.float32),
+        'pspec_s'       : tf.io.VarLenFeature(tf.float32),
         # 'spec_clean_real': tf.io.VarLenFeature(tf.float32),
         # 'spec_clean_imag': tf.io.VarLenFeature(tf.float32),
         # 'spec_noisy_real': tf.io.VarLenFeature(tf.float32),
@@ -96,13 +83,13 @@ def parser( example_proto, dim_feat):
     # with tf.device('/device:GPU:0'):
     length = tf.cast(context_parsed['length'], tf.int32)
 
-    feat_sn = tf.sparse.to_dense(seq_parsed['feat_sn'])
+    pspec_sn = tf.sparse.to_dense(seq_parsed['pspec_sn'])
 
-    feat_sn = tf.reshape(feat_sn, [-1, dim_feat])
+    pspec_sn = tf.reshape(pspec_sn, [-1, 257])
 
-    feat_s = tf.sparse.to_dense(seq_parsed['feat_s'])
+    pspec_s = tf.sparse.to_dense(seq_parsed['pspec_s'])
 
-    feat_s = tf.reshape(feat_s, [-1, dim_feat])
+    pspec_s = tf.reshape(pspec_s, [-1, 257])
 
 
     # spec_clean_real = tf.sparse.to_dense(seq_parsed['spec_clean_real'])
@@ -121,12 +108,11 @@ def parser( example_proto, dim_feat):
 
     # spec_noisy_imag = tf.reshape(spec_noisy_imag, [-1, 257])
 
-    
-    mask = feat_s[:,0] * 0 + 1
+    mask = pspec_s[:,0] * 0 + 1
     mask = mask[..., tf.newaxis]
     mask = tf.cast(mask, tf.float32)
 
-    return feat_sn, feat_s, mask, length
+    return pspec_sn, mask, pspec_s, length
 
 def tfrecords_pipeline(
             filenames,
