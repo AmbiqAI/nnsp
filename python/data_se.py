@@ -15,7 +15,7 @@ import boto3
 import soundfile as sf
 import sounddevice as sd
 import librosa
-from nnsp_pack import tfrecord_converter_se
+from nnsp_pack import tfrecord_converter_se_split
 from nnsp_pack.feature_module import FeatureClass, display_stft_all
 from nnsp_pack import add_noise
 from nnsp_pack import boto3_op
@@ -207,13 +207,10 @@ class FeatMultiProcsClass(multiprocessing.Process):
                 try:
                     timesteps, _  = feat_sn.shape
                     width_targets = end_frames - start_frames + 1
-                    tfrecord_converter_se.make_tfrecord( # pylint: disable=too-many-function-args
+                    tfrecord_converter_se_split.make_tfrecord( # pylint: disable=too-many-function-args
                                         tfrecord,
                                         pspec_sn,
-                                        pspec_s,
-                                        # spec_s,
-                                        # spec_sn,
-                                        timesteps)
+                                        pspec_s)
 
                 except: # pylint: disable=bare-except
                     print(f"Thread-{id_process}: {i}, processing {tfrecord} failed")
