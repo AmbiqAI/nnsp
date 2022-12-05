@@ -143,7 +143,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
                     speech0 = np.concatenate((zeros_s, speech0, zeros_e))
 
                     prob = np.random.uniform(0,1)
-                    if prob < 0.05:
+                    if prob < 0:
                         speech0 *= 0
                         target = 0
                     else:
@@ -236,22 +236,42 @@ def main(args):
             job_type="data-update")
         wandb.config.update(args)
 
-    train_sets = ['train', 'test']
+    sets_categories = ['train', 'test']
 
     ntypes = [
-        'musan/noise/sound-bible',
-        'musan/noise/free-sound',
-        'musan/music']
+        'social_noise',
+        # 'musan/noise/sound-bible',
+        # 'musan/noise/free-sound',
+        # 'musan/music'
+        ]
+
+    os.makedirs('data/noise_list', exist_ok=True)
+    for ntype in ntypes:
+        ntype0 = re.sub(r'/', '_', ntype)
+        noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
+        noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
+        lst_ns = add_noise.get_noise_files_new(ntype)
+        random.shuffle(lst_ns)
+        start = int(len(lst_ns) / 5)
+        with open(noise_files_train, 'w') as file: # pylint: disable=unspecified-encoding
+            for name in lst_ns[start:]:
+                name = re.sub(r'\\', '/', name)
+                file.write(f'{name}\n')
+
+        with open(noise_files_test, 'w') as file:  # pylint: disable=unspecified-encoding
+            for name in lst_ns[:start]:
+                name = re.sub(r'\\', '/', name)
+                file.write(f'{name}\n')
 
     if DEBUG:
         snr_dbs = [10]
     else:
-        snr_dbs = [20]
+        snr_dbs = [10]
 
     target_files = { 'train': args.train_dataset_path,
                      'test' : args.test_dataset_path}
     tot_success_dict = {'train': [], 'test': []}
-    for train_set in train_sets:
+    for train_set in sets_categories:
 
         with open(target_files[train_set], 'r') as file: # pylint: disable=unspecified-encoding
             filepaths = file.readlines()[1:]
@@ -271,11 +291,20 @@ def main(args):
                 manager = multiprocessing.Manager()
                 success_dict = manager.dict({i: [] for i in range(args.num_procs)})
                 print(f'{train_set} set running: snr_dB = {int(snr_db)}, ntype={ntype}')
-                lst_ns = add_noise.get_noise_files_new(ntype)
-                random.shuffle(lst_ns)
-                start = int(len(lst_ns) / 5)
-                noise_files = { 'train' : lst_ns[start:],
-                                'test'  : lst_ns[:start]}
+                ntype0 = re.sub(r'/', '_', ntype)
+                noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
+                noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
+
+                with open(noise_files_train) as file: # pylint: disable=unspecified-encoding
+                    lines = file.readlines()
+                lines_tr = [line.strip() for line in lines]
+
+                with open(noise_files_test) as file: # pylint: disable=unspecified-encoding
+                    lines = file.readlines()
+                lines_te = [line.strip() for line in lines]
+
+                noise_files = { 'train' : lines_tr,
+                                'test'  : lines_te}
                 processes = [
                     FeatMultiProcsClass(
                             i, f"Thread-{i}",
@@ -313,8 +342,9 @@ def main(args):
                     tot_success_dict[train_set] += lst
 
     if not DEBUG:
-        for train_set in train_sets:
+        for train_set in sets_categories:
             with open(f'data/{train_set}_tfrecords_se.csv', 'w') as file: # pylint: disable=unspecified-encoding
+                random.shuffle(tot_success_dict[train_set])
                 for tfrecord in tot_success_dict[train_set]:
                     tfrecord = re.sub(r'\\', '/', tfrecord)
                     file.write(f'{tfrecord}\n')

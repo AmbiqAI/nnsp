@@ -12,27 +12,29 @@ def make_tfrecord(
     """
     Make tfrecord
     """
-    # writer          = tf.io.TFRecordWriter(fname)
     with tf.io.TFRecordWriter(fname) as writer:
 
         pspec_sn_list = np.split(pspec_sn_raw, 5, axis = 0)
-        pspec_s_list = np.split(pspec_s_raw, 5, axis = 0)
+        pspec_s_list  = np.split(pspec_s_raw, 5, axis = 0)
 
         for pspec_sn, pspec_s in zip(pspec_sn_list, pspec_s_list):
             timesteps, _ = pspec_s.shape
             pspec_sn = pspec_sn.reshape([-1])
             pspec_s  = pspec_s.reshape([-1])
-            step_feature    = tf.train.Feature(int64_list = tf.train.Int64List(value = [timesteps]))
-            pspec_sn_feature = tf.train.Feature(float_list = tf.train.FloatList(value = pspec_sn))
-            pspec_s_feature  = tf.train.Feature(float_list = tf.train.FloatList(value = pspec_s))
+            step_feature     = tf.train.Feature(int64_list =
+                                                tf.train.Int64List(value = [timesteps]))
+            pspec_sn_feature = tf.train.Feature(float_list =
+                                                tf.train.FloatList(value = pspec_sn))
+            pspec_s_feature  = tf.train.Feature(float_list =
+                                                tf.train.FloatList(value = pspec_s))
 
             context = tf.train.Features(feature = {
                     "length"    : step_feature,
                 })
 
             feature_lists = tf.train.FeatureLists(feature_list={
-                    "pspec_sn"               : tf.train.FeatureList(feature = [pspec_sn_feature]),
-                    "pspec_s"                : tf.train.FeatureList(feature = [pspec_s_feature]),
+                    "pspec_sn" : tf.train.FeatureList(feature = [pspec_sn_feature]),
+                    "pspec_s"  : tf.train.FeatureList(feature = [pspec_s_feature]),
                 })
 
             seq_example = tf.train.SequenceExample( # context and feature_lists
@@ -70,10 +72,6 @@ def parser( example_proto):
     sequence_features = {
         'pspec_sn'      : tf.io.VarLenFeature(tf.float32),
         'pspec_s'       : tf.io.VarLenFeature(tf.float32),
-        # 'spec_clean_real': tf.io.VarLenFeature(tf.float32),
-        # 'spec_clean_imag': tf.io.VarLenFeature(tf.float32),
-        # 'spec_noisy_real': tf.io.VarLenFeature(tf.float32),
-        # 'spec_noisy_imag': tf.io.VarLenFeature(tf.float32),
     }
     context_parsed, seq_parsed = tf.io.parse_single_sequence_example(
             example_proto,
@@ -85,29 +83,10 @@ def parser( example_proto):
     length = tf.cast(context_parsed['length'], tf.int32)
 
     pspec_sn = tf.sparse.to_dense(seq_parsed['pspec_sn'])
-
     pspec_sn = tf.reshape(pspec_sn, [-1, 257])
 
     pspec_s = tf.sparse.to_dense(seq_parsed['pspec_s'])
-
     pspec_s = tf.reshape(pspec_s, [-1, 257])
-
-
-    # spec_clean_real = tf.sparse.to_dense(seq_parsed['spec_clean_real'])
-
-    # spec_clean_real = tf.reshape(spec_clean_real, [-1, 257])
-
-    # spec_clean_imag = tf.sparse.to_dense(seq_parsed['spec_clean_imag'])
-
-    # spec_clean_imag = tf.reshape(spec_clean_imag, [-1, 257])
-
-    # spec_noisy_real = tf.sparse.to_dense(seq_parsed['spec_noisy_real'])
-
-    # spec_noisy_real = tf.reshape(spec_noisy_real, [-1, 257])
-
-    # spec_noisy_imag = tf.sparse.to_dense(seq_parsed['spec_noisy_imag'])
-
-    # spec_noisy_imag = tf.reshape(spec_noisy_imag, [-1, 257])
 
     mask = pspec_s[:,0] * 0 + 1
     mask = mask[..., tf.newaxis]
@@ -123,9 +102,7 @@ def tfrecords_pipeline(
     Tfrecord generator
     """
     def mapping(record):
-        parser_out = parser(
-                    record)
-        return parser_out
+        return parser(record)
 
     def tfrecord_convert(val):
         return tf.data.TFRecordDataset(val)

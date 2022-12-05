@@ -94,114 +94,93 @@ def epoch_proc( net,
     """
     Training for one epoch
     """
-    total_batches = int(len(fnames) / batchsize) * 5
+    dim_feat, = norm_mean.shape
+
+    net.reset_stats()
+    total_batches = int(len(fnames) / batchsize)
     for batch, data in enumerate(dataset):
-        tf.print(f"\r {batch}/{total_batches}: ",
-                        end = '')
-        dim_feat, = norm_mean.shape
         if batch % 5 == 0:
-            net.reset_stats()
+            states = lstm_states(net, batchsize, zero_state=zero_state)
             shape = (batchsize, num_context-1, dim_feat)
-            padddings_tsteps_zeros = tf.constant(
+            padddings_tsteps = tf.constant(
                             np.full(shape, np.log10(2**-15)),
                             dtype = tf.float32)
         else:
-            padddings_tsteps_zeros = feats[:,-(num_context-1):,:]
+            padddings_tsteps = tf.identity(feats[:,-(num_context-1):,:])
         pspec_sn, masks, pspec_s, _ = data
         feats = tf.matmul(pspec_sn, FBANKS)
         feats = tf_log10_eps(feats)
         feats = fakefix_tf(feats, 32, 15)
-
-        batchsize0, total_steps, _ = feats.shape
-        if 0: # pylint: disable=using-constant-test
-            idx = 10
-            feat = feats[idx,:,:].numpy()
-            logspec_s  = tf_log10_eps(pspec_s[idx,:,:]).numpy()
-            logspec_sn = tf_log10_eps(pspec_sn[idx,:,:]).numpy()
-            msk  = masks[idx,:,0].numpy() * 25
-            plt.figure(1)
-            plt.clf()
-
-            plt.subplot(3,1,1)
-            plt.imshow(
-                feat.T,
-                origin      = 'lower',
-                cmap        = 'pink_r',
-                aspect      = 'auto')
-            plt.plot(msk)
-
-            plt.subplot(3,1,2)
-            plt.imshow(
-                logspec_s.T,
-                origin      = 'lower',
-                cmap        = 'pink_r',
-                aspect      = 'auto')
-            plt.plot(msk)
-
-            plt.subplot(3,1,3)
-            plt.imshow(
-                logspec_sn.T,
-                origin      = 'lower',
-                cmap        = 'pink_r',
-                aspect      = 'auto')
-            plt.plot(msk)
-
-            plt.show()
-        total_steps_extend = int(np.ceil(total_steps / timesteps) * timesteps)
-
-        steps_pad = total_steps_extend - total_steps
-
-        shape_feats = [[0, batchsize - batchsize0], [0, steps_pad], [0, 0]]
-        paddings_feats = tf.constant(shape_feats)
-
-        shape_mask = [[0, batchsize - batchsize0], [0, steps_pad], [0, 0]]
-        paddings_mask = tf.constant(shape_mask)
-
-        # initial input: 2^-15 in time domain
-        shape = (batchsize0, num_context-1, dim_feat)
-
-        feats = tf.concat([padddings_tsteps_zeros, feats], 1)
+        feats = tf.concat([padddings_tsteps, feats], 1)
         nfeats = (feats - norm_mean) * norm_inv_std
         nfeats = fakefix_tf(nfeats, 16, 8)
 
-        nfeats = tf.pad(nfeats, paddings_feats, "CONSTANT")
+        tmp = train_kernel(
+                nfeats,
+                tf.identity(pspec_sn),
+                tf.identity(pspec_s),
+                masks,
+                states,
+                net,
+                optimizer,
+                training    = training,
+                quantized   = quantized)
 
-        pspec_sn = tf.pad(pspec_sn, paddings_feats, "CONSTANT")
-        pspec_s = tf.pad(pspec_s, paddings_feats, "CONSTANT")
+        _, states, ave_loss, steps = tmp
 
-        masks = tf.pad(masks, paddings_mask, "CONSTANT")
+        net.update_cost_steps(ave_loss, steps)
 
-        states = lstm_states(net, batchsize, zero_state= zero_state)
+        if batch % 5 == 4:
+            tf.print(f"\r {int(batch / 5)}/{total_batches}: ",
+                        end = '')
+            net.show_loss(
+                net.stats['acc_loss'],
+                net.stats['acc_matchCount'],
+                net.stats['acc_steps'],
+                SHOW_STEPS)
 
-        for i in range( int(np.round(total_steps / timesteps))):
-            start_fr = i * timesteps
-            end_fr = start_fr + timesteps
-            pspec_sn_part  = pspec_sn[:,start_fr:end_fr:num_dnsampl,:]
-            pspec_s_part   = pspec_s[:,start_fr:end_fr:num_dnsampl,:]
-            nfeat_part  = nfeats[:,start_fr:end_fr + num_context-1,:]
-            mask_part   = masks[:,start_fr:end_fr:num_dnsampl,:]
+        # Debugging
+        if 0: # pylint: disable=using-constant-test
+            idx = 10
+            if batch % 5==0:
+                feat = feats[idx,:,:].numpy()
+                logspec_s = tf_log10_eps(pspec_s[idx,:,:]).numpy()
+                logspec_sn = tf_log10_eps(pspec_sn[idx,:,:]).numpy()
+            else:
+                feat = np.concatenate((feat, feats[idx,:,:].numpy()), axis=0)
+                logspec_s = np.concatenate(
+                                (logspec_s, tf_log10_eps(pspec_s[idx,:,:]).numpy()),
+                                axis=0)
+                logspec_sn = np.concatenate(
+                                (logspec_sn, tf_log10_eps(pspec_sn[idx,:,:]).numpy()),
+                                axis=0)
 
-            tmp = train_kernel(
-                    nfeat_part,
-                    pspec_sn_part,
-                    pspec_s_part,
-                    mask_part,
-                    states,
-                    net,
-                    optimizer,
-                    training    = training,
-                    quantized   = quantized)
+            if batch % 5 == 4:
+                plt.figure(1)
+                plt.clf()
 
-            _, states, ave_loss, steps = tmp
+                plt.subplot(3,1,1)
+                plt.imshow(
+                    feat.T,
+                    origin      = 'lower',
+                    cmap        = 'pink_r',
+                    aspect      = 'auto')
 
-            net.update_cost_steps(ave_loss, steps)
+                plt.subplot(3,1,2)
+                plt.imshow(
+                    logspec_sn.T,
+                    origin      = 'lower',
+                    cmap        = 'pink_r',
+                    aspect      = 'auto')
 
-        net.show_loss(
-            net.stats['acc_loss'],
-            net.stats['acc_matchCount'],
-            net.stats['acc_steps'],
-            SHOW_STEPS)
+                plt.subplot(3,1,3)
+                plt.imshow(
+                    logspec_s.T,
+                    origin      = 'lower',
+                    cmap        = 'pink_r',
+                    aspect      = 'auto')
 
+                plt.show()
     tf.print('\n', end = '')
 
 def main(args):
@@ -275,15 +254,15 @@ def main(args):
             acc = pickle.load(file)
 
         ax_handle = plt.subplot(2,1,1)
-        ax_handle.plot(loss['train'][0: epoch_loaded])
-        ax_handle.plot(loss['test'][0: epoch_loaded])
+        ax_handle.plot(loss['train'][0: epoch_loaded+1])
+        ax_handle.plot(loss['test'][0: epoch_loaded+1])
         ax_handle.legend(['train', 'test'])
         ax_handle.grid(True)
         ax_handle.set_title(f'Loss and accuracy upto epoch {epoch_loaded}. Close it to continue')
 
         ax_handle = plt.subplot(2,1,2)
-        ax_handle.plot(acc['train'][0: epoch_loaded])
-        ax_handle.plot(acc['test'][0: epoch_loaded])
+        ax_handle.plot(acc['train'][0: epoch_loaded+1])
+        ax_handle.plot(acc['test'][0: epoch_loaded+1])
         ax_handle.legend(['train', 'test'])
         ax_handle.set_xlabel('Epochs')
 
@@ -304,7 +283,9 @@ def main(args):
             except:# pylint: disable=bare-except
                 print(f'Can not find the list {tfrecord_list[tr_set]}')
             else:
-                fnames[tr_set] = [line.strip() for line in lines]
+                len0 = int(len(lines) / batchsize) * batchsize
+                # len0 = batchsize * 10
+                fnames[tr_set] = [line.strip() for line in lines[:len0]]
 
     _, dataset = tfrecords_pipeline(
             fnames['train'],
@@ -313,11 +294,14 @@ def main(args):
 
     _, dataset_tr = tfrecords_pipeline(
             fnames['train'],
-            batchsize = batchsize)
+            batchsize = batchsize,
+            is_shuffle = False)
 
     _, dataset_te = tfrecords_pipeline(
             fnames['test'],
-            batchsize = batchsize)
+            batchsize = batchsize,
+            is_shuffle = False)
+
 
     if os.path.exists(f'{folder_nn}/stats.pkl'):
         with open(os.path.join(folder_nn, 'stats.pkl'), "rb") as file:
@@ -436,7 +420,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-b',
         '--batchsize',
-        default=400,
+        default=20,
         type=int,
         help='Batch size for training and validation')
 
@@ -470,7 +454,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default='random',
+        default='latest',
         help='epoch_loaded = \'random\': weight table is randomly generated, \
               epoch_loaded = \'latest\': weight table is loaded from the latest saved epoch result \
               epoch_loaded = 10  \
