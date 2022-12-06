@@ -15,9 +15,13 @@ from nnsp_pack.loss_functions import loss_mse
 from nnsp_pack.converter_fix_point import fakefix_tf
 from nnsp_pack.calculate_feat_stats_se_split import feat_stats_estimator
 from nnsp_pack.load_nn_arch import load_nn_arch, setup_nn_folder
+from nnsp_pack.tf_basic_math import tf_log10_eps
 import c_code_table_converter
 
-DIM_TARGET = 257
+SHOW_STEPS          = True
+DISPLAY_HISTOGRAM   = True
+BLOCKS_PER_AUDIO    = 5
+DIM_TARGET          = 257
 physical_devices    = tf.config.list_physical_devices('GPU')
 
 try:
@@ -25,19 +29,10 @@ try:
 except: # pylint: disable=bare-except
     pass
 
-SHOW_STEPS          = True
-DISPLAY_HISTOGRAM   = True
-
-FBANKS = tf.Variable(
+MEL_FBANKS = tf.Variable(
     np.load('fbank_mel.npy').T,
     dtype       = tf.float32,
     trainable   = False)
-
-def tf_log10_eps(val, eps = 2.0**-15):
-    """
-    log10 with minimum eps
-    """
-    return  tf.math.log(tf.maximum(eps, val)) / tf.math.log(10.0)
 
 @tf.function
 def train_kernel(
@@ -58,22 +53,26 @@ def train_kernel(
                 nfeat,
                 mask,
                 states,
-                training = training,
-                quantized = quantized)
+                training    = training,
+                quantized   = quantized)
 
         amp_sn = tf.math.sqrt(pspec_sn)
         amp_s  = tf.math.sqrt(pspec_s)
 
         ave_loss, steps = loss_mse(
-                tf_log10_eps(amp_s),
-                tf_log10_eps(amp_sn * est),
+                tf_log10_eps(amp_s),        # clean
+                tf_log10_eps(amp_sn * est), # noisy * mask
                 masking = mask)
 
     if training:
         gradients = tape.gradient(ave_loss, net.trainable_variables)
 
-        gradients_clips = [ tf.clip_by_norm(grad, 1) for grad in gradients ]
-        optimizer.apply_gradients(zip(gradients_clips, net.trainable_variables))
+        gradients_clips = [ tf.clip_by_norm(grad, 1)
+                            for grad in gradients ]
+
+        optimizer.apply_gradients(
+                    zip(gradients_clips,
+                        net.trainable_variables))
 
     return est, states, ave_loss, steps
 
@@ -89,7 +88,7 @@ def epoch_proc( net,
                 norm_inv_std,
                 num_dnsampl     = 1,
                 num_context     = 6,
-                quantized=False
+                quantized       = False
                 ):
     """
     Training for one epoch
@@ -99,16 +98,19 @@ def epoch_proc( net,
     net.reset_stats()
     total_batches = int(len(fnames) / batchsize)
     for batch, data in enumerate(dataset):
-        if batch % 5 == 0:
+        if batch % BLOCKS_PER_AUDIO == 0:
             states = lstm_states(net, batchsize, zero_state=zero_state)
+
             shape = (batchsize, num_context-1, dim_feat)
+
             padddings_tsteps = tf.constant(
                             np.full(shape, np.log10(2**-15)),
                             dtype = tf.float32)
         else:
             padddings_tsteps = tf.identity(feats[:,-(num_context-1):,:])
+
         pspec_sn, masks, pspec_s, _ = data
-        feats = tf.matmul(pspec_sn, FBANKS)
+        feats = tf.matmul(pspec_sn, MEL_FBANKS)
         feats = tf_log10_eps(feats)
         feats = fakefix_tf(feats, 32, 15)
         feats = tf.concat([padddings_tsteps, feats], 1)
@@ -130,7 +132,7 @@ def epoch_proc( net,
 
         net.update_cost_steps(ave_loss, steps)
 
-        if batch % 5 == 4:
+        if batch % BLOCKS_PER_AUDIO == (BLOCKS_PER_AUDIO-1):
             tf.print(f"\r {int(batch / 5)}/{total_batches}: ",
                         end = '')
             net.show_loss(
@@ -142,7 +144,7 @@ def epoch_proc( net,
         # Debugging
         if 0: # pylint: disable=using-constant-test
             idx = 10
-            if batch % 5==0:
+            if batch % BLOCKS_PER_AUDIO == 0:
                 feat = feats[idx,:,:].numpy()
                 logspec_s = tf_log10_eps(pspec_s[idx,:,:]).numpy()
                 logspec_sn = tf_log10_eps(pspec_sn[idx,:,:]).numpy()
@@ -155,7 +157,7 @@ def epoch_proc( net,
                                 (logspec_sn, tf_log10_eps(pspec_sn[idx,:,:]).numpy()),
                                 axis=0)
 
-            if batch % 5 == 4:
+            if batch % BLOCKS_PER_AUDIO == (BLOCKS_PER_AUDIO-1):
                 plt.figure(1)
                 plt.clf()
 
@@ -375,7 +377,6 @@ def main(args):
             num_dnsampl         = num_dnsampl,
             num_context         = num_context,
             quantized           = quantized)
-
 
         loss['test'][epoch] = nn_infer.stats['acc_loss'] / nn_infer.stats['acc_steps']
         loss['test'][epoch] /= nn_infer.neurons[-1]

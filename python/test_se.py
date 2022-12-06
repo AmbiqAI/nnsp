@@ -140,7 +140,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-v',
         '--test_wavefile',
-        default = 'test_wavs/speech_5.wav',
+        default = 'test_wavs/speech_1.wav',
         help    = 'The wavfile name to be tested')
 
     argparser.add_argument(
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 135,
+        default= 20,
         help='starting epoch')
 
     main(argparser.parse_args())

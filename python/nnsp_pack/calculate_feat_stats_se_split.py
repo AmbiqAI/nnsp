@@ -6,12 +6,7 @@ import pickle
 import tensorflow as tf
 import numpy as np
 from .converter_fix_point import fakefix_tf
-
-def tf_log10_eps(val, eps = 2.0**-15):
-    """
-    log10 with minimum eps
-    """
-    return  tf.math.log(tf.maximum(eps, val)) / tf.math.log(10.0)
+from .tf_basic_math import tf_log10_eps
 
 def feat_stats_estimator(
         dataset,

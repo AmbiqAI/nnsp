@@ -242,7 +242,7 @@ def main(args):
         'social_noise',
         # 'musan/noise/sound-bible',
         # 'musan/noise/free-sound',
-        # 'musan/music'
+        'musan/music'
         ]
 
     os.makedirs('data/noise_list', exist_ok=True)
@@ -266,7 +266,7 @@ def main(args):
     if DEBUG:
         snr_dbs = [10]
     else:
-        snr_dbs = [10]
+        snr_dbs = [0, 5, 10, 20]
 
     target_files = { 'train': args.train_dataset_path,
                      'test' : args.test_dataset_path}
