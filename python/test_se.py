@@ -9,6 +9,7 @@ import sounddevice as sd
 from nnsp_pack.feature_module import display_stft_tfmask
 from nnsp_pack.pyaudio_animation import AudioShowClass
 from nnsp_pack.nn_infer import NNInferClass
+from nnsp_pack.stft_module import stft_class
 from data_se import params_audio as PARAM_AUDIO
 
 SHOW_HISTOGRAM  = False
@@ -58,9 +59,13 @@ class SeClass(NNInferClass):
         specs   = []
         tfmasks =[]
         triggers = data.copy()
+        stft_inst = stft_class()
+        stft_inst.reset()
 
         for i in range(bks):
             data_frame = data[i*params_audio['hop'] : (i+1) * params_audio['hop']]
+            data_freq = stft_inst.stft_frame_proc(data_frame)
+
             if NP_INFERENCE:
                 feat, spec, est = self.frame_proc_np(data_frame, return_all = True)
             else:
@@ -70,7 +75,10 @@ class SeClass(NNInferClass):
             specs   += [spec]
             self.count_run = (self.count_run + 1) % self.num_dnsampl
             print(f"\rprocessing frame {i}", end='')
-
+            out = stft_inst.istft_frame_proc(data_freq, est)
+            out = np.array([data_frame, out]).T.flatten()
+            out = np.floor(out * 2**15).astype(np.int16)
+            file.writeframes(out.tobytes())
         print('\n', end='')
         tfmasks = np.array(tfmasks)
         feats   = np.array(feats)
@@ -82,10 +90,10 @@ class SeClass(NNInferClass):
             tfmasks.T,
             sample_rate=16000)
 
-        out = np.empty((data.size + triggers.size,), dtype=data.dtype)
+        # out = np.empty((data.size + triggers.size,), dtype=data.dtype)
 
-        out = np.floor(out * 2**15).astype(np.int16)
-        file.writeframes(out.tobytes())
+        # out = np.floor(out * 2**15).astype(np.int16)
+        # file.writeframes(out.tobytes())
         file.close()
 
 def main(args):
@@ -133,14 +141,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-r',
         '--recording',
-        default = 0,
+        default = 1,
         help    = '1: recording the speech and test it, \
                    0: No recording.')
 
     argparser.add_argument(
         '-v',
         '--test_wavefile',
-        default = 'test_wavs/speech_1.wav',
+        default = 'test_wavs/speech.wav',
         help    = 'The wavfile name to be tested')
 
     argparser.add_argument(
