@@ -12,7 +12,9 @@ def get_power(data):
     """Calculate power of data"""
     return np.mean(data**2)
 
-def add_noise(data, noise, snr_db, stime, etime, return_all=False):
+def add_noise(data, noise, snr_db, stime, etime,
+              return_all=False,
+              snr_dB_improved = None):
     """Synthesize noise and speech"""
     pw_data = get_power(data[stime:etime])
     pw_noise = get_power(noise)
@@ -25,10 +27,15 @@ def add_noise(data, noise, snr_db, stime, etime, return_all=False):
     max_val = np.abs(output).max()
     prob = np.random.uniform(0.05, 0.95, 1)
 
-    gain = prob / (max_val + 10**-5)
-    output = output * gain
+    gain    = prob / (max_val + 10**-5)
+    output  = output * gain
+    data    = data   * gain
+    noise   = noise  * gain
+    # if snr_dB_improved:
+    #     gain0 = 10**(snr_dB_improved / 20)
+    #     data = data + noise / gain0
+
     if return_all:
-        data = data * gain
         return output, data
     else:
         return output

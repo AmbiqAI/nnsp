@@ -6,12 +6,7 @@ import matplotlib.pyplot as plt
 from . import feature_module
 from . import gen_stft_win
 
-# hop = 160
-# fftsize = 512
-# winsize = 480
-# overlap_size = fftsize - hop
-
-class stft_class:
+class stft_class: # pylint: disable=invalid-name
     """
     fft_module
     """
@@ -43,11 +38,15 @@ class stft_class:
         self.ibuf[:self.overlap_size] = self.ibuf[self.hop:]
         return data_freq
 
-    def istft_frame_proc(self, data_freq, tfmask = 1.0):
+    def istft_frame_proc(
+            self,
+            data_freq,
+            tfmask = 1.0,
+            min_tfmask = 0.0):
         """
         istft_frame_proc
         """
-        data_freq = data_freq * tfmask
+        data_freq = data_freq * np.maximum(tfmask, min_tfmask)
         data = np.fft.irfft(data_freq)[:self.winsize]
         wdata = data * self.win
         self.obuf += wdata
@@ -56,35 +55,46 @@ class stft_class:
         self.obuf[self.overlap_size:] = 0
         return odata
 
-# win = gen_stft_win.gen_stft_win(winsize, hop, fftsize)
-# a = np.random.uniform(-1,1,10000)
-# A = feature_module.strided_app(a, winsize, hop)
-# print(a)
+def main():
+    """
+    main function to test perfect reconstruction of STFT
+    """
+    hop = 160
+    fftsize = 512
+    winsize = 480
+    overlap_size = winsize - hop
+    win = gen_stft_win.gen_stft_win(winsize, hop, fftsize)
+    data = np.random.uniform(-1,1, 10000)
+    print(data)
+    data_slices = feature_module.strided_app(data, winsize, hop)
+    print(data_slices)
 
-# print(A)
-# ff =np.fft.rfft(A * win, fftsize)
-# print(ff.shape)
+    data_freq =np.fft.rfft(data_slices * win, fftsize) # stft domain
+    print(data_freq.shape)
 
-# iff = np.fft.irfft(ff)[:,:winsize]
-# tt = iff * win
+    data_tslices = np.fft.irfft(data_freq)[:,:winsize] * win
 
-# o = np.zeros(winsize)
-# out = []
-# for t in tt:
-#     o = o + t
-#     out += [o[:hop].copy()]
-#     o[:overlap_size] = o[hop:]
-#     o[overlap_size:] = 0
-# out = np.array(out)
-# print(out.shape)
-# out = out.flatten()[overlap_size:]
-# aa = a[:out.shape[0]]
-# print(out.shape)
-# print(aa.shape)
-# print(np.max(np.abs(out-aa)))
-# print(out)
+    obuf = np.zeros(winsize) # output buffer (overlap-and-add)
+    out = []
+    for data_tslice in data_tslices:
+        obuf = obuf + data_tslice
+        out += [obuf[:hop].copy()] # need to .copy to have deep copy
+        obuf[:overlap_size] = obuf[hop:]
+        obuf[overlap_size:] = 0
+    out = np.array(out)
+    print(out.shape)
+    out = out.flatten()[overlap_size:]
+    data_ref = data[:out.shape[0]]
+    print(out.shape)
+    print(data_ref.shape)
+    print(np.max(np.abs(out-data_ref)))
+    print(out)
 
-# plt.plot(out)
-# plt.plot(aa)
+    plt.figure(1)
+    plt.plot(out)
+    plt.plot(data_ref)
 
-# plt.show()
+    plt.show()
+
+if __name__=="__main__":
+    main()

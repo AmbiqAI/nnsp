@@ -58,7 +58,6 @@ class SeClass(NNInferClass):
         feats   = []
         specs   = []
         tfmasks =[]
-        triggers = data.copy()
         stft_inst = stft_class()
         stft_inst.reset()
 
@@ -75,7 +74,10 @@ class SeClass(NNInferClass):
             specs   += [spec]
             self.count_run = (self.count_run + 1) % self.num_dnsampl
             print(f"\rprocessing frame {i}", end='')
-            out = stft_inst.istft_frame_proc(data_freq, est)
+            out = stft_inst.istft_frame_proc(
+                    data_freq,
+                    tfmask = est,
+                    min_tfmask = 0.1)
             out = np.array([data_frame, out]).T.flatten()
             out = np.floor(out * 2**15).astype(np.int16)
             file.writeframes(out.tobytes())
@@ -89,11 +91,6 @@ class SeClass(NNInferClass):
             feats.T,
             tfmasks.T,
             sample_rate=16000)
-
-        # out = np.empty((data.size + triggers.size,), dtype=data.dtype)
-
-        # out = np.floor(out * 2**15).astype(np.int16)
-        # file.writeframes(out.tobytes())
         file.close()
 
 def main(args):
@@ -160,7 +157,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 20,
+        default= 42,
         help='starting epoch')
 
     main(argparser.parse_args())

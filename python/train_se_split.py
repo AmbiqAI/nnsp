@@ -116,19 +116,22 @@ def epoch_proc( net,
         feats = tf.concat([padddings_tsteps, feats], 1)
         nfeats = (feats - norm_mean) * norm_inv_std
         nfeats = fakefix_tf(nfeats, 16, 8)
+        _, steps, _ = pspec_sn.shape
+        for k in range(steps // timesteps):
+            start = k * timesteps
+            end = (k+1) * timesteps
+            tmp = train_kernel(
+                    nfeats[:,start:end+num_context,:],
+                    tf.identity(pspec_sn[:,start:end:num_dnsampl,:]),
+                    tf.identity(pspec_s[:,start:end:num_dnsampl,:]),
+                    masks[:,start:end:num_dnsampl,:],
+                    states,
+                    net,
+                    optimizer,
+                    training    = training,
+                    quantized   = quantized)
 
-        tmp = train_kernel(
-                nfeats,
-                tf.identity(pspec_sn),
-                tf.identity(pspec_s),
-                masks,
-                states,
-                net,
-                optimizer,
-                training    = training,
-                quantized   = quantized)
-
-        _, states, ave_loss, steps = tmp
+            _, states, ave_loss, steps = tmp
 
         net.update_cost_steps(ave_loss, steps)
 
@@ -407,13 +410,13 @@ if __name__ == "__main__":
         help='nn architecture')
 
     argparser.add_argument(
-        '-st',
+        '-tr',
         '--train_list',
         default='data/train_tfrecords_se.csv',
         help='train_list')
 
     argparser.add_argument(
-        '-ss',
+        '-te',
         '--test_list',
         default='data/test_tfrecords_se.csv',
         help='test_list')
@@ -442,18 +445,19 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-l',
         '--learning_rate',
-        default=4 * 10**-4,
+        default=1 * 10**-4,
         type=float,
         help='learning rate')
 
     argparser.add_argument(
-        '-e',
+        '-n',
         '--num_epoch',
         type=int,
         default=1000,
         help='Number of epochs to train')
 
     argparser.add_argument(
+        '-e',
         '--epoch_loaded',
         default='latest',
         help='epoch_loaded = \'random\': weight table is randomly generated, \

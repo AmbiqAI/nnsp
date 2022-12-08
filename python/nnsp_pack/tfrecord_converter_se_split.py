@@ -21,12 +21,15 @@ def make_tfrecord(
             timesteps, _ = pspec_s.shape
             pspec_sn = pspec_sn.reshape([-1])
             pspec_s  = pspec_s.reshape([-1])
-            step_feature     = tf.train.Feature(int64_list =
-                                                tf.train.Int64List(value = [timesteps]))
-            pspec_sn_feature = tf.train.Feature(float_list =
-                                                tf.train.FloatList(value = pspec_sn))
-            pspec_s_feature  = tf.train.Feature(float_list =
-                                                tf.train.FloatList(value = pspec_s))
+
+            step_feature = tf.train.Feature(
+                int64_list = tf.train.Int64List(value = [timesteps]))
+
+            pspec_sn_feature = tf.train.Feature(
+                float_list = tf.train.FloatList(value = pspec_sn))
+
+            pspec_s_feature = tf.train.Feature(
+                float_list = tf.train.FloatList(value = pspec_s))
 
             context = tf.train.Features(feature = {
                     "length"    : step_feature,

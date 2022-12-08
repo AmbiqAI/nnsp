@@ -55,7 +55,7 @@ def feat_stats_estimator(
     # std calculation
     for batch, data in enumerate(dataset):
         if batch % 5 == 0:
-            tf.print(f"\rMean estimating (batch) {int(batch / 5)}/{num_batches}, ",
+            tf.print(f"\rSTD estimating (batch) {int(batch / 5)}/{num_batches}, ",
                         end = '')
         pspec_sn, masks, _, _ = data
         feats = convert_pspec2melspec(pspec_sn)

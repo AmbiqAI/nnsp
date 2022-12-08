@@ -176,12 +176,13 @@ class FeatMultiProcsClass(multiprocessing.Process):
                                     noise,
                                     self.snr_db,
                                     stime, etime,
-                                    return_all=True)
+                                    return_all=True,
+                                    snr_dB_improved = 20)
             # feature extraction of sig
             spec_sn, _, feat_sn, pspec_sn = self.feat_inst.block_proc(audio_sn)
             spec_s, _, feat_s, pspec_s    = self.feat_inst.block_proc(audio_s)
             if DEBUG:
-                sd.play(audio_sn, sample_rate)
+                sd.play(audio_s, sample_rate)
                 print(fnames[2*i])
                 print(fnames[2*i + 1])
                 print(start_frames)
@@ -238,6 +239,11 @@ def main(args):
 
     sets_categories = ['train', 'test']
 
+    if DEBUG:
+        snr_dbs = [10]
+    else:
+        snr_dbs = [0, 5, 10, 20]
+
     ntypes = [
         'social_noise',
         # 'musan/noise/sound-bible',
@@ -247,26 +253,30 @@ def main(args):
 
     os.makedirs('data/noise_list', exist_ok=True)
     for ntype in ntypes:
-        ntype0 = re.sub(r'/', '_', ntype)
-        noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
-        noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
-        lst_ns = add_noise.get_noise_files_new(ntype)
-        random.shuffle(lst_ns)
-        start = int(len(lst_ns) / 5)
-        with open(noise_files_train, 'w') as file: # pylint: disable=unspecified-encoding
-            for name in lst_ns[start:]:
-                name = re.sub(r'\\', '/', name)
-                file.write(f'{name}\n')
+        if ntype=='social_noise':
+            for set0 in ['train', 'test']:
+                noise_files_lst = f'data/noise_list/{set0}_noiselist_{ntype}.csv'
+                lst_ns = add_noise.get_noise_files_new(f'social_noise/{set0}')
+                with open(noise_files_lst, 'w') as file: # pylint: disable=unspecified-encoding
+                    for name in lst_ns:
+                        name = re.sub(r'\\', '/', name)
+                        file.write(f'{name}\n')
+        else:
+            ntype0 = re.sub(r'/', '_', ntype)
+            noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
+            noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
+            lst_ns = add_noise.get_noise_files_new(ntype)
+            random.shuffle(lst_ns)
+            start = int(len(lst_ns) / 5)
+            with open(noise_files_train, 'w') as file: # pylint: disable=unspecified-encoding
+                for name in lst_ns[start:]:
+                    name = re.sub(r'\\', '/', name)
+                    file.write(f'{name}\n')
 
-        with open(noise_files_test, 'w') as file:  # pylint: disable=unspecified-encoding
-            for name in lst_ns[:start]:
-                name = re.sub(r'\\', '/', name)
-                file.write(f'{name}\n')
-
-    if DEBUG:
-        snr_dbs = [10]
-    else:
-        snr_dbs = [0, 5, 10, 20]
+            with open(noise_files_test, 'w') as file:  # pylint: disable=unspecified-encoding
+                for name in lst_ns[:start]:
+                    name = re.sub(r'\\', '/', name)
+                    file.write(f'{name}\n')
 
     target_files = { 'train': args.train_dataset_path,
                      'test' : args.test_dataset_path}
