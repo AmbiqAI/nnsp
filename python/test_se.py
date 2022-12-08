@@ -77,7 +77,7 @@ class SeClass(NNInferClass):
             out = stft_inst.istft_frame_proc(
                     data_freq,
                     tfmask = est,
-                    min_tfmask = 0.1)
+                    min_tfmask = 1.0 / 5)
             out = np.array([data_frame, out]).T.flatten()
             out = np.floor(out * 2**15).astype(np.int16)
             file.writeframes(out.tobytes())
