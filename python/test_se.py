@@ -26,7 +26,8 @@ class SeClass(NNInferClass):
             params_audio,
             quantized=False,
             show_histogram=False,
-            np_inference=False):
+            np_inference=False,
+            feat_type = 'mel'):
 
         super().__init__(
             nn_arch,
@@ -34,7 +35,8 @@ class SeClass(NNInferClass):
             params_audio,
             quantized,
             show_histogram,
-            np_inference)
+            np_inference,
+            feat_type = feat_type)
 
         self.fbank_mel = np.load('fbank_mel.npy')
 
@@ -114,13 +116,14 @@ def main(args):
     sd.play(data, sample_rate)
 
     se_inst = SeClass(
-                    args.nn_arch,
-                    epoch_loaded,
-                    PARAM_AUDIO,
-                    quantized,
-                    show_histogram  = SHOW_HISTOGRAM,
-                    np_inference    = NP_INFERENCE
-                    )
+            args.nn_arch,
+            epoch_loaded,
+            PARAM_AUDIO,
+            quantized,
+            show_histogram  = SHOW_HISTOGRAM,
+            np_inference    = NP_INFERENCE,
+            feat_type       = args.feat_type
+            )
 
     se_inst.blk_proc(data)
 
@@ -132,8 +135,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch.txt',
+        default='nn_arch/def_se_nn_arch1.txt',
         help='nn architecture')
+
+    argparser.add_argument(
+        '-ft',
+        '--feat_type',
+        default='pspec',
+        help='feature type: \'mel\'or \'pspec\'')
 
     argparser.add_argument(
         '-r',
@@ -157,7 +166,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 42,
+        default= 36,
         help='starting epoch')
 
     main(argparser.parse_args())

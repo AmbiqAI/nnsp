@@ -13,7 +13,8 @@ def feat_stats_estimator(
         fnames,
         batchsize,
         dim_feat,
-        folder_nn):
+        folder_nn,
+        feat_type='mel'):
     """
     Estimate statistics of training data
     """
@@ -27,12 +28,14 @@ def feat_stats_estimator(
 
     num_batches = int(len(fnames) / batchsize)
 
-    def convert_pspec2melspec(data):
+    def convert_pspec2melspec(data, feat_type='mel'):
         """
         more feat extraction
         """
-        feats = tf.matmul(data, fbanks)
-        feats = tf_log10_eps(feats)
+        if feat_type=='mel':
+            feats = tf.matmul(data, fbanks)
+        elif feat_type=='pspec':
+            feats = tf_log10_eps(data)
         return fakefix_tf(feats, 32, 15)
 
     # mean calculation
@@ -41,7 +44,7 @@ def feat_stats_estimator(
             tf.print(f"\rMean estimating (batch) {int(batch / 5)}/{num_batches}, ",
                         end = '')
         pspec_sn, masks, _, _ = data
-        feats = convert_pspec2melspec(pspec_sn)
+        feats = convert_pspec2melspec(pspec_sn, feat_type)
         _, _, dim_feat = feats.shape
         tmp = tf.math.reduce_sum(feats * masks, axis = (0,1))
         mean_stats = mean_stats + tf.cast(tmp, tf.float64)
@@ -58,7 +61,7 @@ def feat_stats_estimator(
             tf.print(f"\rSTD estimating (batch) {int(batch / 5)}/{num_batches}, ",
                         end = '')
         pspec_sn, masks, _, _ = data
-        feats = convert_pspec2melspec(pspec_sn)
+        feats = convert_pspec2melspec(pspec_sn, feat_type)
         _, _, dim_feat = feats.shape
         tmp = tf.math.reduce_sum( masks * (feats - mean_stats)**2, axis = (0,1))
         inv_std_stats = inv_std_stats + tf.cast(tmp, tf.float64)

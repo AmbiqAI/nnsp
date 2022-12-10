@@ -175,12 +175,13 @@ def main():
     for epoch in range(3):
         for batch, data  in enumerate(dataset):
             pspec_sn, _, pspec_s, _ = data
-            print(f"Epoch {epoch}, Batch {batch}")
-            print('pspec_sn shape:', pspec_sn.shape)
-            print('pspec_s shape:', pspec_s.shape)
-            for i in range(5):
-                print(pspec_sn[i][0,0:5])
-            print("")
+            if batch in {0,1,2,3,4}:
+                print(f"Epoch {epoch}, Batch {batch}")
+                print('pspec_sn shape:', pspec_sn.shape)
+                print('pspec_s shape:', pspec_s.shape)
+                for i in range(5):
+                    print(pspec_sn[i][0,0:5])
+                print("")
 
 if __name__ == "__main__":
     main()

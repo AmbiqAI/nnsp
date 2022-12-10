@@ -10,6 +10,7 @@ from .nn_module import NeuralNetClass, lstm_states
 from .feature_module import FeatureClass
 from .converter_fix_point import fakefix
 from .load_nn_arch import load_nn_arch, setup_nn_folder
+from .log_module import log10_fakeFix
 
 class NNInferClass:
     """
@@ -22,12 +23,13 @@ class NNInferClass:
             params_audio,
             quantized=False,
             show_histogram=False,
-            np_inference=False):
+            np_inference=False,
+            feat_type='mel'):
 
         self.params_audio = params_audio
         self.show_histogram = show_histogram
         self.np_inference = np_inference
-
+        self.feat_type = feat_type
         out = load_nn_arch(nn_arch)
 
         neurons, _, layer_types, activations, num_context, self.num_dnsampl = out
@@ -64,8 +66,11 @@ class NNInferClass:
 
         with open(os.path.join(folder_nn,'stats.pkl'), "rb") as file:
             self.stats = pickle.load(file)
+        if self.feat_type=='mel':
+            shape = (num_context, self.params_audio['nfilters_mel'])
+        elif self.feat_type=='pspec':
+            shape = (num_context, 257)
 
-        shape = (num_context, self.params_audio['nfilters_mel'])
         self.feats_init = np.log10(np.full(shape, 2**-15, dtype=np.float32),
                                     dtype=np.float32)
         self.feats_init = (self.feats_init - self.stats['nMean_feat']) * self.stats['nInvStd']
@@ -152,13 +157,16 @@ class NNInferClass:
         """
         feature extraction
         """
-        spec, _, feat, _ = self.feature_inst.frame_proc(data)
+        spec, _, feat, pspec = self.feature_inst.frame_proc(data)
+        if self.feat_type=='pspec':
+            feat = log10_fakeFix(pspec)
         feat = fakefix((feat - self.stats['nMean_feat']) * self.stats['nInvStd'], 16, 8)
         self.feats = self.feats[1:]
         self.feats = np.concatenate((self.feats, np.expand_dims(feat, axis=0)), axis=0)
         return feat, spec
 
-    def frame_proc_tf(self, data, return_all=False):
+    def frame_proc_tf(self, data,
+                    return_all=False):
         """
         NN frame process using tensorflow
         """
@@ -189,7 +197,7 @@ class NNInferClass:
             self.post_nn_infer(est)
         if return_all:
             return feat, spec, est
-        else:        
+        else:
             return feat, spec
 
     def post_nn_infer(self, nn_output):

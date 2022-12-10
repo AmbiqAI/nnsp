@@ -88,7 +88,8 @@ def epoch_proc( net,
                 norm_inv_std,
                 num_dnsampl     = 1,
                 num_context     = 6,
-                quantized       = False
+                quantized       = False,
+                feat_type       = 'mel'
                 ):
     """
     Training for one epoch
@@ -110,7 +111,10 @@ def epoch_proc( net,
             padddings_tsteps = tf.identity(feats[:,-(num_context-1):,:])
 
         pspec_sn, masks, pspec_s, _ = data
-        feats = tf.matmul(pspec_sn, MEL_FBANKS)
+        if feat_type == 'mel':
+            feats = tf.matmul(pspec_sn, MEL_FBANKS)
+        elif feat_type == 'pspec':
+            feats = tf.identity(pspec_sn)
         feats = tf_log10_eps(feats)
         feats = fakefix_tf(feats, 32, 15)
         feats = tf.concat([padddings_tsteps, feats], 1)
@@ -314,7 +318,8 @@ def main(args):
     else:
         stats = feat_stats_estimator(
                 dataset_tr, fnames['train'],
-                batchsize, dim_feat, folder_nn)
+                batchsize, dim_feat, folder_nn,
+                feat_type=args.feat_type)
 
     nn_np = c_code_table_converter.tf2np(nn_infer, quantized=quantized)
     if DISPLAY_HISTOGRAM:
@@ -338,7 +343,8 @@ def main(args):
             norm_inv_std    = stats['nInvStd'],
             num_dnsampl     = num_dnsampl,
             num_context     = num_context,
-            quantized       = quantized)
+            quantized       = quantized,
+            feat_type       = args.feat_type)
 
         nn_train.duplicated_to(
                 nn_infer,
@@ -358,7 +364,8 @@ def main(args):
             norm_inv_std    = stats['nInvStd'],
             num_dnsampl     = num_dnsampl,
             num_context     = num_context,
-            quantized       = quantized)
+            quantized       = quantized,
+            feat_type       = args.feat_type)
 
         loss['train'][epoch] = nn_infer.stats['acc_loss'] / nn_infer.stats['acc_steps']
         loss['train'][epoch] /= nn_infer.neurons[-1]
@@ -379,7 +386,8 @@ def main(args):
             norm_inv_std        = stats['nInvStd'],
             num_dnsampl         = num_dnsampl,
             num_context         = num_context,
-            quantized           = quantized)
+            quantized           = quantized,
+            feat_type           = args.feat_type)
 
         loss['test'][epoch] = nn_infer.stats['acc_loss'] / nn_infer.stats['acc_steps']
         loss['test'][epoch] /= nn_infer.neurons[-1]
@@ -406,8 +414,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch.txt',
+        default='nn_arch/def_se_nn_arch1.txt',
         help='nn architecture')
+
+    argparser.add_argument(
+        '-ft',
+        '--feat_type',
+        default='pspec',
+        help='feature type: \'mel\'or \'pspec\'')
 
     argparser.add_argument(
         '-tr',
