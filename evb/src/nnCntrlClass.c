@@ -10,6 +10,7 @@
 #include "nnCntrlClass.h"
 #include "ParamsNNCntrl.h"
 #include "ns_ambiqsuite_harness.h"
+#include "ns_energy_monitor.h"
 #include "neural_nets.h"
 
 #ifdef AUDIODEBUG
@@ -168,6 +169,7 @@ void nnCntrlClass_exec(
     switch (current_nnsp_id)
     {
         case s2i_id: // s2i case
+        ns_set_power_monitor_state(NS_INFERING);
 
         PcmBufClass_getData(
             &pcmbuf_inst,
@@ -183,7 +185,7 @@ void nnCntrlClass_exec(
         {
             if (detected)
             {
-                am_util_stdio_printf("\nDetected: %s, %s, %s.\n",
+                ns_lp_printf("\nDetected: %s, %s, %s.\n",
                         intents[pt_nnsp->outputs[0]],
                         slots[pt_nnsp->outputs[1]],
                         slots[pt_nnsp->outputs[2]]);
@@ -219,7 +221,7 @@ void nnCntrlClass_exec(
             {
                 next_pos_seq = (pt_inst->current_pos_seq + 1) % pt_inst->len_seq_cntrl; 
                 next_nnsp_id = pt_seq_cntrl[next_pos_seq];
-                am_util_stdio_printf("\nDetected: Hi Galaxy\n");
+                ns_lp_printf("\nDetected: Hi Galaxy\n");
             }
             else
             {
@@ -238,6 +240,7 @@ void nnCntrlClass_exec(
         break;
 
         case vad_id: // vad case
+        ns_set_power_monitor_state(NS_FEATURE_EXTRACTION);
 
         PcmBufClass_getData(
             &pcmbuf_inst,
@@ -249,7 +252,7 @@ void nnCntrlClass_exec(
 
         if (detected)
         {
-            am_util_stdio_printf("\nVoice detected!!\n");
+            ns_lp_printf("\nVoice detected!!\n");
             next_pos_seq = (pt_inst->current_pos_seq + 1) % pt_inst->len_seq_cntrl;
             next_nnsp_id = pt_seq_cntrl[next_pos_seq];
 
@@ -272,15 +275,15 @@ void display_current_status(int8_t nnsp_id) {
     switch (nnsp_id)
     {
         case s2i_id:
-        am_util_stdio_printf("--------------In S2I phase--------------\n");
+        ns_lp_printf("--------------In S2I phase--------------\n");
         break;
 
         case kws_galaxy_id:
-        am_util_stdio_printf("--------------In KWS phase--------------\n");
+        ns_lp_printf("--------------In KWS phase--------------\n");
         break;
 
         case vad_id:
-        am_util_stdio_printf("--------------In VAD phase--------------\n");
+        ns_lp_printf("--------------In VAD phase--------------\n");
         break;
     }
 }
