@@ -40,6 +40,8 @@ typedef struct{
     ParamCntrlClass Params;
     uint16_t cnt_timeout_kws;
     uint16_t cnt_timeout_s2i;
+    uint16_t cnt_voice_frames_detected;
+    uint16_t cnt_voice_frames_not_detected;
 }nnCntrlClass;
 
 void nnCntrlClass_init(

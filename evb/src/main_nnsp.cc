@@ -106,9 +106,10 @@ int main(void)
 {
     nnCntrlClass cntrl_inst;
 
-    NNSP_ID nn_seq[]={vad_id, kws_galaxy_id, s2i_id};
-    // NNSP_ID nn_seq[]={vad_id, s2i_id};
-    int8_t len_nn_seq = 3;
+    // NNSP_ID nn_seq[]={vad_id, kws_galaxy_id, s2i_id};
+    // int8_t len_nn_seq = 3;
+    NNSP_ID nn_seq[]={vad_id, s2i_id};
+    int8_t len_nn_seq = 2;
 
     NNSP_ID *pt_seq_cntrl;
     int8_t current_nnsp_id;

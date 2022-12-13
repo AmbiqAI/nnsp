@@ -113,7 +113,7 @@ void s2iCntrlClass_exec(
     detected = NNSPClass_exec(pt_nnsp, pcmbuf_chunk);
     if (detected)
     {
-        am_util_stdio_printf("\nDetected: %s, %s, %s.\n",
+        ns_lp_printf("\nDetected: %s, %s, %s.\n",
                 intents[pt_nnsp->outputs[0]],
                 slots[pt_nnsp->outputs[1]],
                 slots[pt_nnsp->outputs[2]]);

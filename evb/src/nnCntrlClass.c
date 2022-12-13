@@ -123,7 +123,8 @@ void nnCntrlClass_init(
             &pt_inst->Params.thresh_cnts_kws);
 
     pt_inst->current_pos_seq = 0;
-    
+    pt_inst->cnt_voice_frames_detected = 0;
+    pt_inst->cnt_voice_frames_not_detected = 0;
 }
 
 void nnCntrlClass_reset(nnCntrlClass *pt_inst) {
@@ -138,7 +139,9 @@ void nnCntrlClass_reset(nnCntrlClass *pt_inst) {
 
     pt_inst->cnt_timeout_kws = 0;
     pt_inst->cnt_timeout_s2i = 0;
-    
+    pt_inst->cnt_voice_frames_detected = 0;
+    pt_inst->cnt_voice_frames_not_detected = 0;
+
     for (i = 0; i < num_NNSP_IDS; i++)
     {
         NNSPClass_reset(&pt_nnsp_arry[i]);
@@ -262,6 +265,157 @@ void nnCntrlClass_exec(
             } 
             pt_inst->current_pos_seq = next_pos_seq;
         }
+        break;
+    }
+    if (current_nnsp_id != next_nnsp_id)
+        display_current_status(next_nnsp_id);
+}
+
+
+void nnCntrlClass_exec_ignoreme(
+        nnCntrlClass *pt_inst, 
+        int16_t *data_fr,
+        int16_t *pcmbuf_chunk) {
+    /***
+    execution of each frame data:
+        
+        Inputs:
+                pt_inst : instance pointer
+                indata  : frame data    
+    ***/
+    NNSP_ID *pt_seq_cntrl = (NNSP_ID*) pt_inst->pt_seq_cntrl;
+    int8_t current_nnsp_id = pt_seq_cntrl[pt_inst->current_pos_seq];
+    NNSPClass *pt_nnsp = ((NNSPClass*) pt_inst->pt_nnsp_arry) + current_nnsp_id;
+    NNSPClass *pt_vad = ((NNSPClass*) pt_inst->pt_nnsp_arry) + vad_id;
+    int8_t next_nnsp_id = current_nnsp_id;
+    int8_t next_pos_seq;
+    int16_t detected = 0;
+
+    PcmBufClass_setData(&pcmbuf_inst, data_fr); // put data to voice buffer
+
+    switch (current_nnsp_id)
+    {
+        case s2i_id: // s2i case
+        // VAD first
+        // PcmBufClass_getData(
+        //     &pcmbuf_inst,
+        //     0,
+        //     1, 
+        //     pcmbuf_chunk); // fetch input data to NN from voice bufffer
+
+        // detected = NNSPClass_exec(pt_vad, pcmbuf_chunk);
+        // if (detected == false) {
+        //     pt_inst->cnt_voice_frames_not_detected++;
+        //     ns_lp_printf(".");
+        // } else {
+        //     pt_inst->cnt_voice_frames_not_detected = 0;
+        // }
+
+        ns_set_power_monitor_state(NS_INFERING);
+
+        PcmBufClass_getData(
+            &pcmbuf_inst,
+            pt_inst->Params.frs_vbufBk_s2i,
+            1, 
+            pcmbuf_chunk); // fetch input data to NN from voice bufffer
+
+        detected = NNSPClass_exec(pt_nnsp, pcmbuf_chunk);
+
+        pt_inst->cnt_timeout_s2i = (pt_inst->cnt_timeout_s2i + 1) % pt_inst->Params.thresh_timeout_s2i;
+        
+        if (detected || 
+            (pt_inst->cnt_timeout_s2i == (pt_inst->Params.thresh_timeout_s2i-1)) ||
+            (pt_inst->cnt_voice_frames_not_detected > 5))
+        {
+            if (detected)
+            {
+                ns_lp_printf("\nDetected: %s, %s, %s.\n",
+                        intents[pt_nnsp->outputs[0]],
+                        slots[pt_nnsp->outputs[1]],
+                        slots[pt_nnsp->outputs[2]]);
+            }
+
+            next_pos_seq = (pt_inst->current_pos_seq + 1) % pt_inst->len_seq_cntrl; 
+            next_nnsp_id = pt_seq_cntrl[next_pos_seq];
+
+            if ((detected) || (current_nnsp_id != next_nnsp_id))
+            {
+                pt_inst->cnt_timeout_s2i = 0;
+                pt_inst->cnt_voice_frames_not_detected = 0;
+                NNSPClass_reset(pt_nnsp);
+            } 
+            pt_inst->current_pos_seq = next_pos_seq;
+        }
+        break;
+
+        case kws_galaxy_id: // kws case
+
+        PcmBufClass_getData(
+            &pcmbuf_inst,
+            pt_inst->Params.frs_vbufBk_kws,
+            1, 
+            pcmbuf_chunk); // fetch input data to NN from voice bufffer
+
+        detected = NNSPClass_exec(pt_nnsp, pcmbuf_chunk);
+
+        pt_inst->cnt_timeout_kws = (pt_inst->cnt_timeout_kws + 1) % pt_inst->Params.thresh_timeout_kws;
+        
+        if (detected || (pt_inst->cnt_timeout_kws == (pt_inst->Params.thresh_timeout_kws-1)))
+        {
+            if (detected)
+            {
+                next_pos_seq = (pt_inst->current_pos_seq + 1) % pt_inst->len_seq_cntrl; 
+                next_nnsp_id = pt_seq_cntrl[next_pos_seq];
+                ns_lp_printf("\nDetected: Hi Galaxy\n");
+            }
+            else
+            {
+                next_pos_seq = (pt_inst->current_pos_seq - 1) % pt_inst->len_seq_cntrl; 
+                next_pos_seq = (next_pos_seq >= 0) ? next_pos_seq : next_pos_seq + pt_inst->len_seq_cntrl;
+                next_nnsp_id = pt_seq_cntrl[next_pos_seq];
+            }
+
+            if ((detected) || (current_nnsp_id != next_nnsp_id))
+            {
+                pt_inst->cnt_timeout_kws = 0;
+                NNSPClass_reset(pt_nnsp);
+            } 
+            pt_inst->current_pos_seq = next_pos_seq;
+        }
+        break;
+
+        case vad_id: // vad case
+        ns_set_power_monitor_state(NS_FEATURE_EXTRACTION);
+
+        PcmBufClass_getData(
+            &pcmbuf_inst,
+            0,
+            1, 
+            pcmbuf_chunk); // fetch input data to NN from voice bufffer
+
+        detected = NNSPClass_exec(pt_nnsp, pcmbuf_chunk);
+
+        if (detected)
+        {
+            if (pt_inst->cnt_voice_frames_detected < FRS_VBUFBK_S2IRNN) {
+                pt_inst->cnt_voice_frames_detected++;
+            } else {
+                ns_lp_printf("\nVoice detected for %d frames!!\n", FRS_VBUFBK_S2IRNN);
+                next_pos_seq = (pt_inst->current_pos_seq + 1) % pt_inst->len_seq_cntrl;
+                next_nnsp_id = pt_seq_cntrl[next_pos_seq];
+                pt_inst->cnt_voice_frames_detected = 0;
+
+                if ((detected) || (current_nnsp_id != next_nnsp_id))
+                {
+                    NNSPClass_reset(pt_nnsp);
+                } 
+                pt_inst->current_pos_seq = next_pos_seq;
+            }
+
+        } else {
+            pt_inst->cnt_voice_frames_detected = 0;
+        }
+
         break;
     }
     if (current_nnsp_id != next_nnsp_id)

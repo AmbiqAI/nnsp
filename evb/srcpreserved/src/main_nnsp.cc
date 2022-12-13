@@ -8,6 +8,7 @@
 #include "ns_ambiqsuite_harness.h"
 #include "ns_audio.h"
 // #include "arm_intrinsic_test.h"
+#include "ns_energy_monitor.h"
 
 #define NUM_CHANNELS 1
 int16_t pcmbuf_chunk[LEN_STFT_HOP];
@@ -29,6 +30,7 @@ bool static g_audioRecording = false;
 bool static g_audioReady = false;
 /// Audio buffer for application
 int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
+uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
 
 /**
 * 
@@ -47,7 +49,7 @@ audio_frame_callback(ns_audio_config_t *config, uint16_t bytesCollected) {
 
     if (g_audioRecording) {
         if (g_audioReady)
-            ns_printf("Warning - audio buffer wasnt consumed in time\n");
+            ns_lp_printf("Warning - audio buffer wasnt consumed in time\n");
 
         // Raw PCM data is 32b (12b/channel) - here we only care about one
         // channel For ringbuffer mode, this loop may feel extraneous, but it is
@@ -88,6 +90,7 @@ ns_audio_config_t audio_config = {
     .audioBuffer = (void *)&g_in16AudioDataBuffer,
 #endif
     .eAudioSource = NS_AUDIO_SOURCE_AUDADC,
+    .sampleBuffer = audadcSampleBuffer,
     .numChannels = NUM_CHANNELS,
     .numSamples = LEN_STFT_HOP,
     .sampleRate = SAMPLING_RATE,
@@ -103,8 +106,10 @@ int main(void)
 {
     nnCntrlClass cntrl_inst;
 
-    NNSP_ID nn_seq[]={vad_id, kws_galaxy_id, s2i_id};
-    int8_t len_nn_seq = 3;
+    // NNSP_ID nn_seq[]={vad_id, kws_galaxy_id, s2i_id};
+    // int8_t len_nn_seq = 3;
+    NNSP_ID nn_seq[]={vad_id, s2i_id};
+    int8_t len_nn_seq = 2;
 
     NNSP_ID *pt_seq_cntrl;
     int8_t current_nnsp_id;
@@ -119,7 +124,7 @@ int main(void)
     // Initialize the printf interface for ITM output
     //
     ns_debug_printf_enable();
-	ns_power_config(&ns_development_default);			
+	ns_power_config(&ns_audio_default);			
     ns_peripheral_button_init(&button_config_nnsp);
     ns_audio_init(&audio_config);
 
@@ -132,30 +137,31 @@ int main(void)
     nnCntrlClass_reset(&cntrl_inst);
 
     #ifdef DEF_ACC32BIT_OPT
-    ns_printf("You are using 32bit accumulator.\n");
+    ns_lp_printf("You are using 32bit accumulator.\n");
 #else
-    ns_printf("You are using 64bit accumulator.\n");
+    ns_lp_printf("You are using 64bit accumulator.\n");
 #endif
 
-    ns_printf("\nPress button to start!\n");
+    ns_lp_printf("\nPress button to start!\n");
 
     while (1) 
     {
         g_audioRecording = false;
         g_intButtonPressed = 0;
         
-        am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
+        ns_deep_sleep();
         
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
         {
-            ns_printf("\nYou'd pressed the button. Program start!\n");
+            ns_lp_printf("\nYou've pressed the button. Program start!\n");
             display_current_status(current_nnsp_id);
             g_intButtonPressed = 0;
             g_audioRecording = true;
             am_hal_delay_us(10);   
             while (1)
             {   
-                am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
+                ns_set_power_monitor_state(NS_DATA_COLLECTION);
+                ns_deep_sleep();
 
                 if (g_audioReady) 
                 {
@@ -168,7 +174,6 @@ int main(void)
                     g_audioReady = false;
                 }
             }
-            ns_printf("\nPress button to start!\n");
         }
     } // while(1)
 }
