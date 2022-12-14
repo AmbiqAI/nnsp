@@ -20,12 +20,19 @@
 //     arm_fft_exec(output, input);
 //     for (int i = 0; i < 257; i++)
 //     {
-//         ns_printf("%d: (%d, %d)\n", i, 
+//         ns_lp_printf("%d: (%d, %d)\n", i, 
 //                     output[2*i] >> 6, 
 //                     output[2*i+1]>>6);
 //     }
 //     return 0;
 // }
+
+ns_timer_config_t my_tickTimer = {
+    .prefix = {0},
+    .timer = NS_TIMER_COUNTER,
+    .enableInterrupt = false,
+};
+
 int arm_test_s2i(
         void *pt_cntrl_inst_, 
         int16_t *pt_data)
@@ -35,13 +42,13 @@ int arm_test_s2i(
     
     // reset all internal states
     s2iCntrlClass_reset(pt_cntrl_inst);
-    ns_timer_init(0);
+	ns_timer_init(&my_tickTimer);
     for (int i = 0; i < NUM_FRAMES_EST; i++)
     {
         s2iCntrlClass_exec(pt_cntrl_inst, pt_data);
     }
-    elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("Total: %3.2f ms/inference\n",
+    elapsed_time = ns_us_ticker_read(&my_tickTimer);    
+    ns_lp_printf("Total: %3.2f ms/inference\n",
                 ((float) elapsed_time) / NUM_FRAMES_EST / 1000);
     return 0;
 }
@@ -57,13 +64,13 @@ uint32_t test_feat()
 
     FeatureClass_construct(&feat, mean, stdR, 15);
     FeatureClass_setDefault(&feat);
-    ns_timer_init(0);
+	ns_timer_init(&my_tickTimer);
     for (i=0; i < NUM_FRAMES_EST; i++)
     {
         FeatureClass_execute(&feat, input);
     }
-    elapsed_time = ns_us_ticker_read(0);   
-    ns_printf("feat: %3.2f ms/inference\n",
+    elapsed_time = ns_us_ticker_read(&my_tickTimer);    
+    ns_lp_printf("feat: %3.2f ms/inference\n",
                 ((float) elapsed_time) / NUM_FRAMES_EST / 1000);
     return 0;
 }
@@ -75,13 +82,13 @@ uint32_t test_fft()
     uint32_t elapsed_time;
     int i;
     arm_fft_init();
-    ns_timer_init(0);
+	ns_timer_init(&my_tickTimer);
     for (i = 0; i < NUM_FRAMES_EST; i++)
     {
         arm_fft_exec(output, input);
     }
-    elapsed_time = ns_us_ticker_read(0);   
-    ns_printf("fft: %3.2f ms/inference\n",
+    elapsed_time = ns_us_ticker_read(&my_tickTimer);    
+    ns_lp_printf("fft: %3.2f ms/inference\n",
                 ((float) elapsed_time) / NUM_FRAMES_EST / 1000);
     return 0;
 }
@@ -100,7 +107,7 @@ int arm_test_nnsp(
         val32 = __SMLAD(val32, val32, val32);
     }
     elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%u\n", elapsed_time);
+    ns_lp_printf("%u\n", elapsed_time);
 
     val64 = 0;
     ns_timer_init(0);
@@ -109,7 +116,7 @@ int arm_test_nnsp(
         val64 = __SMLALD(val32, val32, val64);
     }
     elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%u\n", elapsed_time);
+    ns_lp_printf("%u\n", elapsed_time);
     
     val64 = 0;
     ns_timer_init(0);
@@ -118,7 +125,7 @@ int arm_test_nnsp(
         val64 += (int64_t) val8 * (int64_t) val8 + (int64_t) val8 * (int64_t) val8; 
     }
     elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%u\n", elapsed_time);
+    ns_lp_printf("%u\n", elapsed_time);
     #endif
     nnCntrlClass *pt_cntrl_inst = (nnCntrlClass *) pt_cntrl_inst_;
     int i;
@@ -131,7 +138,7 @@ int arm_test_nnsp(
         nnCntrlClass_exec(pt_cntrl_inst, pt_data, data_buf);
     }
     elapsed_time = ns_us_ticker_read(0);    
-    ns_printf("%3.5f ms/inference\n", ((float) elapsed_time) / 1000 / 1000) ;
+    ns_lp_printf("%3.5f ms/inference\n", ((float) elapsed_time) / 1000 / 1000) ;
     
     
 
