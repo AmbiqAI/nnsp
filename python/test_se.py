@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 70,
+        default= 98,
         help='starting epoch')
 
     main(argparser.parse_args())
