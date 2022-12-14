@@ -79,7 +79,7 @@ class SeClass(NNInferClass):
             out = stft_inst.istft_frame_proc(
                     data_freq,
                     tfmask = est,
-                    min_tfmask = 1.0 / 5)
+                    min_tfmask = 0)
             out = np.array([data_frame, out]).T.flatten()
             out = np.floor(out * 2**15).astype(np.int16)
             file.writeframes(out.tobytes())
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-r',
         '--recording',
-        default = 1,
+        default = 0,
         help    = '1: recording the speech and test it, \
                    0: No recording.')
 
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 36,
+        default= 70,
         help='starting epoch')
 
     main(argparser.parse_args())

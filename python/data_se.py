@@ -55,7 +55,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
     """
     def __init__(self, id_process,
                  name, src_list, train_set, ntype,
-                 noise_files, snr_db, success_dict,
+                 noise_files, snr_dbs, success_dict,
                  params_audio_def):
 
         multiprocessing.Process.__init__(self)
@@ -74,7 +74,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
         self.train_set      = train_set
         self.ntype          = ntype
         self.noise_files    = noise_files
-        self.snr_db         = snr_db
+        self.snr_dbs        = snr_dbs
         self.names=[]
         if DEBUG:
             self.cnt = 0
@@ -82,7 +82,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
     def run(self):
         #      threadLock.acquire()
         print("Running " + self.name)
-
+        random.shuffle(self.src_list)
         self.convert_tfrecord(
                     self.src_list,
                     self.id_process)
@@ -106,10 +106,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
             pattern = r'(\.wav$|\.flac$)'
             for k in range(2):
                 fname = fnames[2*i+k]
-                bks = fname.strip().split(',')
-                wavpath = bks[0]
-                stime = int(bks[1])         # start time
-                etime = int(bks[2])         # end time
+                wavpath = fname.strip()
                 if k == 0:
                     tfrecord = re.sub(pattern, '.tfrecord', re.sub(r'wavs', S3_PREFIX, wavpath))
                 try:
@@ -171,10 +168,11 @@ class FeatMultiProcsClass(multiprocessing.Process):
             end_frames      = end_frames.astype(np.int32)
             # add noise to sig
             noise = add_noise.get_noise(self.noise_files[self.train_set], len(speech))
+            snr_db = self.snr_dbs[np.random.randint(0,len(self.snr_dbs))]
             audio_sn, audio_s = add_noise.add_noise(
                                     speech,
                                     noise,
-                                    self.snr_db,
+                                    snr_db,
                                     stime, etime,
                                     return_all=True,
                                     snr_dB_improved = 20)
@@ -182,11 +180,12 @@ class FeatMultiProcsClass(multiprocessing.Process):
             spec_sn, _, feat_sn, pspec_sn = self.feat_inst.block_proc(audio_sn)
             spec_s, _, feat_s, pspec_s    = self.feat_inst.block_proc(audio_s)
             if DEBUG:
-                sd.play(audio_s, sample_rate)
+                sd.play(audio_sn, sample_rate)
                 print(fnames[2*i])
                 print(fnames[2*i + 1])
                 print(start_frames)
                 print(targets)
+                print(f'snr={snr_db} dB')
                 flabel = np.zeros(spec_sn.shape[0])
                 for start_frame, end_frame, target in zip(start_frames, end_frames, targets):
                     flabel[start_frame: end_frame] = target
@@ -202,7 +201,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
             if success:
                 ntype = re.sub('/','_', self.ntype)
                 tfrecord = re.sub(  r'\.tfrecord$',
-                                    f'_snr{self.snr_db}dB_{ntype}.tfrecord',
+                                    f'_snr{snr_db}dB_{ntype}.tfrecord',
                                     tfrecord)
                 os.makedirs(os.path.dirname(tfrecord), exist_ok=True)
                 try:
@@ -239,24 +238,22 @@ def main(args):
 
     sets_categories = ['train', 'test']
 
-    if DEBUG:
-        snr_dbs = [10]
-    else:
-        snr_dbs = [0, 5, 10, 20]
+    snr_dbs = [-6, -3, 0, 3, 6, 9, 12, 15, 18, 21, 100]
 
     ntypes = [
-        'social_noise',
-        # 'musan/noise/sound-bible',
-        # 'musan/noise/free-sound',
+        'wham_noise',
         'musan/music'
         ]
 
     os.makedirs('data/noise_list', exist_ok=True)
     for ntype in ntypes:
-        if ntype=='social_noise':
+        if ntype=='wham_noise':
             for set0 in ['train', 'test']:
                 noise_files_lst = f'data/noise_list/{set0}_noiselist_{ntype}.csv'
-                lst_ns = add_noise.get_noise_files_new(f'social_noise/{set0}')
+                if set0 == 'train':
+                    lst_ns = add_noise.get_noise_files_new('wham_noise/tr')
+                else:
+                    lst_ns = add_noise.get_noise_files_new('wham_noise/cv')
                 with open(noise_files_lst, 'w') as file: # pylint: disable=unspecified-encoding
                     for name in lst_ns:
                         name = re.sub(r'\\', '/', name)
@@ -284,7 +281,10 @@ def main(args):
     for train_set in sets_categories:
 
         with open(target_files[train_set], 'r') as file: # pylint: disable=unspecified-encoding
-            filepaths = file.readlines()[1:]
+            filepaths = file.readlines()
+            # len0 = len(filepaths)
+            # random.shuffle(filepaths)
+            # filepaths = filepaths[:len0 // 4]
 
         blk_size = int(np.floor(len(filepaths) / args.num_procs))
         sub_src = []
@@ -295,61 +295,59 @@ def main(args):
             else:
                 sub_src += [filepaths[idx0:blk_size+idx0]]
 
-        for snr_db in snr_dbs:
-            for ntype in ntypes:
+        for ntype in ntypes:
+            manager = multiprocessing.Manager()
+            success_dict = manager.dict({i: [] for i in range(args.num_procs)})
+            print(f'{train_set} set running: snr_dB = {snr_dbs[0]}--{snr_dbs[-1]}, ntype={ntype}')
+            ntype0 = re.sub(r'/', '_', ntype)
+            noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
+            noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
 
-                manager = multiprocessing.Manager()
-                success_dict = manager.dict({i: [] for i in range(args.num_procs)})
-                print(f'{train_set} set running: snr_dB = {int(snr_db)}, ntype={ntype}')
-                ntype0 = re.sub(r'/', '_', ntype)
-                noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
-                noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
+            with open(noise_files_train) as file: # pylint: disable=unspecified-encoding
+                lines = file.readlines()
+            lines_tr = [line.strip() for line in lines]
 
-                with open(noise_files_train) as file: # pylint: disable=unspecified-encoding
-                    lines = file.readlines()
-                lines_tr = [line.strip() for line in lines]
+            with open(noise_files_test) as file: # pylint: disable=unspecified-encoding
+                lines = file.readlines()
+            lines_te = [line.strip() for line in lines]
 
-                with open(noise_files_test) as file: # pylint: disable=unspecified-encoding
-                    lines = file.readlines()
-                lines_te = [line.strip() for line in lines]
+            noise_files = { 'train' : lines_tr,
+                            'test'  : lines_te}
+            processes = [
+                FeatMultiProcsClass(
+                        i, f"Thread-{i}",
+                        sub_src[i],
+                        train_set,
+                        ntype,
+                        noise_files,
+                        snr_dbs,
+                        success_dict,
+                        params_audio_def = params_audio)
+                            for i in range(args.num_procs)]
 
-                noise_files = { 'train' : lines_tr,
-                                'test'  : lines_te}
-                processes = [
-                    FeatMultiProcsClass(
-                            i, f"Thread-{i}",
-                            sub_src[i],
-                            train_set,
-                            ntype,
-                            noise_files,
-                            snr_db,
-                            success_dict,
-                            params_audio_def = params_audio)
-                                for i in range(args.num_procs)]
+            start_time = time.time()
 
-                start_time = time.time()
+            if DEBUG:
+                for proc in processes:
+                    proc.run()
+            else:
+                for proc in processes:
+                    proc.start()
 
-                if DEBUG:
-                    for proc in processes:
-                        proc.run()
-                else:
-                    for proc in processes:
-                        proc.start()
+                for proc in processes:
+                    proc.join()
+                print(f"Time elapse {time.time() - start_time} sec")
 
-                    for proc in processes:
-                        proc.join()
-                    print(f"Time elapse {time.time() - start_time} sec")
+            if args.wandb_track:
+                data = wandb.Artifact(
+                    S3_BUCKET + "-tfrecords",
+                    type="dataset",
+                    description="tfrecords of speech command dataset")
+                data.add_reference(f"s3://{S3_BUCKET}/{S3_PREFIX}", max_objects=31000)
+                run.log_artifact(data)
 
-                if args.wandb_track:
-                    data = wandb.Artifact(
-                        S3_BUCKET + "-tfrecords",
-                        type="dataset",
-                        description="tfrecords of speech command dataset")
-                    data.add_reference(f"s3://{S3_BUCKET}/{S3_PREFIX}", max_objects=31000)
-                    run.log_artifact(data)
-
-                for lst in success_dict.values():
-                    tot_success_dict[train_set] += lst
+            for lst in success_dict.values():
+                tot_success_dict[train_set] += lst
 
     if not DEBUG:
         for train_set in sets_categories:
@@ -368,19 +366,19 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-t',
         '--train_dataset_path',
-        default = 'data/train_files_se.csv',
+        default = 'data/train_se.csv',
         help    = 'path to train data file')
 
     argparser.add_argument(
         '--test_dataset_path',
-        default = 'data/test_files_se.csv',
+        default = 'data/test_se.csv',
         help    = 'path to test data file')
 
     argparser.add_argument(
         '-n',
         '--num_procs',
         type    = int,
-        default = 4,
+        default = 8,
         help='How many processor cores to use for execution')
 
     argparser.add_argument(

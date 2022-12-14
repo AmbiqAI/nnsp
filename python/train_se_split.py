@@ -15,7 +15,7 @@ from nnsp_pack.loss_functions import loss_mse
 from nnsp_pack.converter_fix_point import fakefix_tf
 from nnsp_pack.calculate_feat_stats_se_split import feat_stats_estimator
 from nnsp_pack.load_nn_arch import load_nn_arch, setup_nn_folder
-from nnsp_pack.tf_basic_math import tf_log10_eps
+from nnsp_pack.tf_basic_math import tf_log10_eps, tf_power_eps
 import c_code_table_converter
 
 SHOW_STEPS          = True
@@ -60,8 +60,8 @@ def train_kernel(
         amp_s  = tf.math.sqrt(pspec_s)
 
         ave_loss, steps = loss_mse(
-                tf_log10_eps(amp_s),        # clean
-                tf_log10_eps(amp_sn * est), # noisy * mask
+                tf_power_eps(amp_s),        # clean
+                tf_power_eps(amp_sn * est), # noisy * mask
                 masking = mask)
 
     if training:
@@ -125,10 +125,10 @@ def epoch_proc( net,
             start = k * timesteps
             end = (k+1) * timesteps
             tmp = train_kernel(
-                    nfeats[:,start:end+num_context,:],
+                    tf.identity(  nfeats[:,start:end+num_context-1,:]),
                     tf.identity(pspec_sn[:,start:end:num_dnsampl,:]),
-                    tf.identity(pspec_s[:,start:end:num_dnsampl,:]),
-                    masks[:,start:end:num_dnsampl,:],
+                    tf.identity( pspec_s[:,start:end:num_dnsampl,:]),
+                    tf.identity(   masks[:,start:end:num_dnsampl,:]),
                     states,
                     net,
                     optimizer,
@@ -269,14 +269,8 @@ def main(args):
         ax_handle.grid(True)
         ax_handle.set_title(f'Loss and accuracy upto epoch {epoch_loaded}. Close it to continue')
 
-        ax_handle = plt.subplot(2,1,2)
-        ax_handle.plot(acc['train'][0: epoch_loaded+1])
-        ax_handle.plot(acc['test'][0: epoch_loaded+1])
-        ax_handle.legend(['train', 'test'])
-        ax_handle.set_xlabel('Epochs')
-
-        print(f"(train) max acc epoch = {np.argmax(acc['train'])}")
-        print(f"(test)  max acc epoch = {np.argmax(acc['test'])}")
+        print(f"(train) best epoch picked by loss = {np.argmin(loss['train'][0: epoch_loaded+1])}")
+        print(f"(test)  best epoch picked by loss = {np.argmin(loss['test'][0: epoch_loaded+1])}")
 
         ax_handle.grid(True)
 
@@ -438,7 +432,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-b',
         '--batchsize',
-        default=20,
+        default=100,
         type=int,
         help='Batch size for training and validation')
 
@@ -459,7 +453,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-l',
         '--learning_rate',
-        default=1 * 10**-4,
+        default = 4 * 10**-5,
         type=float,
         help='learning rate')
 

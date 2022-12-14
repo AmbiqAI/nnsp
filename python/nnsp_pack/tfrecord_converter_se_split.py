@@ -121,15 +121,20 @@ def tfrecords_pipeline(
                 cycle_length       = batchsize,
                 block_length       = 1,
                 deterministic      = True,
-                num_parallel_calls = tf.data.experimental.AUTOTUNE)
-    dataset = dataset.map(mapping,
-                          num_parallel_calls = tf.data.experimental.AUTOTUNE
-                          )
+                num_parallel_calls = tf.data.AUTOTUNE)
+    dataset = dataset.map(
+                mapping,
+                num_parallel_calls = tf.data.AUTOTUNE,
+                deterministic = True)
     dataset = dataset.batch(
                     batchsize,
                     drop_remainder=True,
-                    num_parallel_calls = tf.data.experimental.AUTOTUNE)
-    dataset = dataset.prefetch(buffer_size = tf.data.experimental.AUTOTUNE)
+                    num_parallel_calls = tf.data.AUTOTUNE)
+    options = tf.data.Options()
+    options.threading.max_intra_op_parallelism = 1
+    options.threading.private_threadpool_size = 10
+    dataset = dataset.with_options(options)
+    dataset = dataset.prefetch(buffer_size = tf.data.AUTOTUNE)
     iterator = iter(dataset)
     return iterator, dataset
 
