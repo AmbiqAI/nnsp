@@ -10,7 +10,7 @@
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
 
-#define ENERGY_MEASUREMENT
+// #define ENERGY_MEASUREMENT
 
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
@@ -117,8 +117,8 @@ int main(void) {
     g_audioRecording = false;
 
     ns_core_init();
-    ns_power_config(&ns_lp_audio);
-    // ns_power_config(&ns_development_default);
+    // ns_power_config(&ns_lp_audio);
+    ns_power_config(&ns_audio_default);
 
     #ifdef ENERGY_MEASUREMENT
         // ns_uart_printf_enable(); // use uart to print, uses less power
@@ -128,7 +128,6 @@ int main(void) {
     #else
         ns_itm_printf_enable();
     #endif
-    ns_lp_printf("Hello!\n");
 
     ns_audio_init(&audio_config);
     ns_peripheral_button_init(&button_config_nnsp);

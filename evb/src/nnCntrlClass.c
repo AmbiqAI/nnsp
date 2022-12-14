@@ -286,7 +286,7 @@ void nnCntrlClass_exec_ignoreme(
     NNSP_ID *pt_seq_cntrl = (NNSP_ID*) pt_inst->pt_seq_cntrl;
     int8_t current_nnsp_id = pt_seq_cntrl[pt_inst->current_pos_seq];
     NNSPClass *pt_nnsp = ((NNSPClass*) pt_inst->pt_nnsp_arry) + current_nnsp_id;
-    NNSPClass *pt_vad = ((NNSPClass*) pt_inst->pt_nnsp_arry) + vad_id;
+    // NNSPClass *pt_vad = ((NNSPClass*) pt_inst->pt_nnsp_arry) + vad_id;
     int8_t next_nnsp_id = current_nnsp_id;
     int8_t next_pos_seq;
     int16_t detected = 0;

@@ -106,25 +106,18 @@ int main(void)
 {
     nnCntrlClass cntrl_inst;
 
-    // NNSP_ID nn_seq[]={vad_id, kws_galaxy_id, s2i_id};
-    // int8_t len_nn_seq = 3;
-    NNSP_ID nn_seq[]={vad_id, s2i_id};
-    int8_t len_nn_seq = 2;
+    NNSP_ID nn_seq[]={vad_id, kws_galaxy_id, s2i_id};
+    int8_t len_nn_seq = 3;
+    // NNSP_ID nn_seq[]={vad_id, s2i_id};
+    // int8_t len_nn_seq = 2;
 
     NNSP_ID *pt_seq_cntrl;
     int8_t current_nnsp_id;
     g_audioRecording = false;
 
-    ns_itm_printf_enable();
-    
-    am_hal_cachectrl_config(&am_hal_cachectrl_defaults);
-    am_hal_cachectrl_enable();
-
-    //
-    // Initialize the printf interface for ITM output
-    //
-    ns_debug_printf_enable();
+    ns_core_init();
 	ns_power_config(&ns_audio_default);			
+    ns_itm_printf_enable();
     ns_peripheral_button_init(&button_config_nnsp);
     ns_audio_init(&audio_config);
 
