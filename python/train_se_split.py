@@ -446,14 +446,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-q',
         '--quantized',
-        default=False,
+        default=True,
         type=bool,
         help='is post quantization?')
 
     argparser.add_argument(
         '-l',
         '--learning_rate',
-        default = 4 * 10**-5,
+        default = 4 * 10**-4,
         type=float,
         help='learning rate')
 

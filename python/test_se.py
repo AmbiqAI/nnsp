@@ -44,6 +44,7 @@ class SeClass(NNInferClass):
         """
         Reset s2i instance
         """
+        print("Reset all the states from parents")
         super().reset()
 
     def blk_proc(self, data):
@@ -166,7 +167,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 109,
+        default= 145,
         help='starting epoch')
 
     main(argparser.parse_args())
