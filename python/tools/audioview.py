@@ -3,6 +3,7 @@
 Returns:
     _type_: _description_
 """
+import os
 import argparse
 import sys
 import wave
@@ -36,7 +37,9 @@ class DataServiceHandler:
         wavefile initialization
         """
         # daytime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        wavefile = wave.open(wavename, 'wb')
+        fldr = 'audio_result'
+        os.makedirs(fldr, exist_ok=True)
+        wavefile = wave.open(f'{fldr}/' + wavename, 'wb')
         wavefile.setnchannels(1)
         wavefile.setsampwidth(2)
         wavefile.setframerate(16000)
