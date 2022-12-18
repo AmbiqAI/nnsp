@@ -4,11 +4,9 @@ Returns:
     _type_: _description_
 """
 import argparse
-import struct
 import sys
 import wave
 from multiprocessing import Process, Array, Lock
-# from datetime import datetime
 import erpc
 import GenericDataOperations_EvbToPc
 import numpy as np
@@ -65,20 +63,17 @@ class DataServiceHandler:
                 self.wavefile = self.wavefile_init(self.wavename)
 
             # Data is a 16 bit PCM sample
-            data = struct.unpack("<" + "h" * (len(block.buffer) >> 1), block.buffer)
-            data = np.array(data)
-            fdata = data.copy() / 32768.0
-
+            self.lock.acquire()
+            fdata = np.frombuffer(block.buffer, dtype=np.int16).copy() / 32768.0
+            self.lock.release()
             start = self.cyc_count * HOP_SIZE
-            ending= start+HOP_SIZE
-
             if self.cyc_count == 0:
                 np_databuf = np.zeros(FRAMES_TO_SHOW * HOP_SIZE)
                 self.lock.acquire()
                 self.databuf[0:] = np_databuf
                 self.lock.release()
             self.lock.acquire()
-            self.databuf[start:ending] = fdata
+            self.databuf[start:start+HOP_SIZE] = fdata
             self.lock.release()
             self.cyc_count = (self.cyc_count+1) % FRAMES_TO_SHOW
 
