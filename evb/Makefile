@@ -10,6 +10,7 @@ TARGET = $(local_app_name)
 sources:=src/def_nn0_s2i.c
 sources+=src/def_nn1_vad.c
 sources+=src/def_nn2_kws_galaxy.c
+# sources+=src/def_nn3_se.c
 sources+=src/PcmBufClass.c
 sources+=src/arm_intrinsic_test.c
 sources+=src/$(local_app_name).cc

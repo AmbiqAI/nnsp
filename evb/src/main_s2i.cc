@@ -9,9 +9,8 @@
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
-
+#define AUDIO_CAPTURE // audio capture
 // #define ENERGY_MEASUREMENT
-
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
@@ -30,6 +29,26 @@ bool volatile static g_audioReady = false;
 int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
 uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
 
+
+#ifdef AUDIO_CAPTURE 
+#include "ns_rpc_generic_data.h"
+static char msg_store[30] = "Audio16bPCM_to_WAV";
+static char msg_inblock[30] = "Message to EVB";
+
+// Block sent to PC
+static dataBlock outBlock = {
+    .length = LEN_STFT_HOP * sizeof(int16_t),
+    .dType = uint8_e,
+    .description = msg_store,
+    .cmd = write_cmd,
+    .buffer = {.data = (uint8_t *)g_in16AudioDataBuffer, // point this to audio buffer
+               .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
+// Block sent to PC for computation
+static ns_rpc_config_t rpcConfig = {.mode = NS_RPC_GENERICDATA_CLIENT,
+                                    .sendBlockToEVB_cb = NULL,
+                                    .fetchBlockFromEVB_cb = NULL,
+                                    .computeOnEVB_cb = NULL};
+#endif
 /**
 * 
 * @brief Audio Callback (user-defined, executes in IRQ context)
@@ -146,15 +165,20 @@ int main(void) {
         g_in16AudioDataBuffer);
     test_fft();
     test_feat();
+    // test_upload_pc();
+    // arm_test_se();
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
 
+#ifdef AUDIO_CAPTURE
+    ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
+    ns_lp_printf("\nStart the PC-side server...\n");
+#endif
     ns_lp_printf("\nPress button to start!\n");
     while (1) 
     {
         g_audioRecording = false;
         g_intButtonPressed = 0;
-        
         ns_deep_sleep();
         
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
@@ -167,15 +191,18 @@ int main(void) {
             {   
                 ns_set_power_monitor_state(NS_DATA_COLLECTION);
                 ns_deep_sleep();
-
                 if (g_audioReady) 
                 {
                     // execution of each time frame data
                     s2iCntrlClass_exec(
                         &cntrl_inst,
                         g_in16AudioDataBuffer);
+#ifdef AUDIO_CAPTURE
+                    ns_rpc_data_sendBlockToPC(&outBlock);
+#endif
                     g_audioReady = false;
                 }
+                
             }
             ns_lp_printf("\nPress button to start!\n");
         }
