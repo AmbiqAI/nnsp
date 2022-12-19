@@ -33,7 +33,6 @@ uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
 #ifdef AUDIO_CAPTURE 
 #include "ns_rpc_generic_data.h"
 static char msg_store[30] = "Audio16bPCM_to_WAV";
-static char msg_inblock[30] = "Message to EVB";
 
 // Block sent to PC
 static dataBlock outBlock = {

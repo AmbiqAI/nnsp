@@ -1,7 +1,5 @@
-"""_summary_
-
-Returns:
-    _type_: _description_
+"""
+Audio Viewer for the audio data from EVB
 """
 import os
 import argparse
@@ -14,23 +12,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 
-
 # Define the RPC service handlers - one for each EVB-to-PC RPC function
 FRAMES_TO_SHOW  = 500
 SAMPLING_RATE   = 16000
 HOP_SIZE        = 160
 
-class DataServiceHandler:
+class DataServiceClass:
     """
-    Audio data: EVB->PC
+    Capture Audio data: EVB->PC
     """
-    def __init__(self, databuf, wavout, lock, shared_record):
+    def __init__(self, databuf, wavout, lock, is_record):
         self.cyc_count      = 0
         self.wavefile       = None
         self.wavename       = wavout
         self.databuf        = databuf
         self.lock           = lock
-        self.shared_record  = shared_record
+        self.is_record  = is_record
 
     def wavefile_init(self, wavename):
         """
@@ -47,20 +44,37 @@ class DataServiceHandler:
 
     def ns_rpc_data_sendBlockToPC(self, block): # pylint: disable=invalid-name
         """
-        callback
+        data sent from EVB to PC.
         """
         self.lock.acquire()
-        shared_record = self.shared_record[0]
+        is_record = self.is_record[0]
         self.lock.release()
-        if shared_record == 0:
+        if is_record == 0:
             if self.wavefile:
                 self.wavefile.close()
                 self.wavefile = None
                 print('Stop recording')
         else:
-            if self.wavefile:
-                self.wavefile.writeframesraw(block.buffer)
-            else:
+            # The data 'block' (in C) is defined below:
+            # static char msg_store[30] = "Audio16bPCM_to_WAV";
+
+            # // Block sent to PC
+            # static dataBlock outBlock = {
+            #     .length = SAMPLES_IN_FRAME * sizeof(int16_t),
+            #     .dType = uint8_e,
+            #     .description = msg_store,
+            #     .cmd = write_cmd,
+            #     .buffer = {.data = (uint8_t *)in16AudioDataBuffer, // point this to audio buffer # pylint: disable=line-too-long
+            #             .dataLength = SAMPLES_IN_FRAME * sizeof(int16_t)}};
+
+            if self.wavefile: # wavefile exists
+                if (block.cmd == GenericDataOperations_EvbToPc.common.command.write_cmd) \
+                     and (block.description == "Audio16bPCM_to_WAV"):
+
+                    self.lock.acquire()
+                    self.wavefile.writeframesraw(block.buffer)
+                    self.lock.release()
+            else: # wavefile doesn't exist
                 print('Start recording')
                 self.cyc_count = 0
                 self.wavefile = self.wavefile_init(self.wavename)
@@ -84,14 +98,14 @@ class DataServiceHandler:
 
         return 0
 
-class EvbDataClass:
+class VisualDataClass:
     """
-    Drawing the audio data from EVB
+    Visual the audio data from EVB
     """
-    def __init__(self, databuf, lock, shared_record):
+    def __init__(self, databuf, lock, is_record):
         self.databuf = databuf
         self.lock    = lock
-        self.shared_record = shared_record
+        self.is_record = is_record
         secs2show = FRAMES_TO_SHOW * HOP_SIZE/SAMPLING_RATE
         self.xdata = np.arange(FRAMES_TO_SHOW * HOP_SIZE) / SAMPLING_RATE
         self.fig, self.ax_handle = plt.subplots()
@@ -140,7 +154,7 @@ class EvbDataClass:
         for stop button
         """
         self.lock.acquire()
-        self.shared_record[0] = 0
+        self.is_record[0] = 0
         self.lock.release()
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
@@ -150,11 +164,11 @@ class EvbDataClass:
         for record button
         """
         self.lock.acquire()
-        shared_record = self.shared_record[0]
+        is_record = self.is_record[0]
         self.lock.release()
-        if shared_record == 0:
+        if is_record == 0:
             self.lock.acquire()
-            self.shared_record[0] = 1
+            self.is_record[0] = 1
             self.lock.release()
             while 1:
                 self.lock.acquire()
@@ -164,25 +178,25 @@ class EvbDataClass:
 
                 plt.pause(0.05)
                 self.lock.acquire()
-                shared_record = self.shared_record[0]
+                is_record = self.is_record[0]
                 self.lock.release()
-                if shared_record == 0:
+                if is_record == 0:
                     break
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
-def draw(databuf, lock, recording):
+def target_proc_draw(databuf, lock, recording):
     """
-    draw
+    one of multiprocesses: draw
     """
-    EvbDataClass(databuf, lock, recording)
+    VisualDataClass(databuf, lock, recording)
 
-def rvd_evb(tty, baud, databuf, wavout, lock, shared_record):
+def target_proc_evb2pc(tty, baud, databuf, wavout, lock, is_record):
     """
-    EVB sends data to PC
+    one of multiprocesses: EVB sends data to PC
     """
     transport_evb2pc = erpc.transport.SerialTransport(tty, int(baud))
-    handler = DataServiceHandler(databuf, wavout, lock, shared_record)
+    handler = DataServiceClass(databuf, wavout, lock, is_record)
     service = GenericDataOperations_EvbToPc.server.evb_to_pcService(handler)
     server = erpc.simple_server.SimpleServer(transport_evb2pc, erpc.basic_codec.BasicCodec)
     server.add_service(service)
@@ -196,20 +210,25 @@ def main(args):
     """
     lock = Lock()
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
-    record_ind = Array('i', 1)
-    record_ind[0] = 0
-    proc_draw = Process(target=draw, args = (databuf,lock, record_ind))
-    proc_main = Process(target=rvd_evb,
-                        args = (args.tty,
+    record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
+    # we use two multiprocesses to handle real-time visualization and recording
+    # 1. proc_draw   : for visualization
+    # 2. proc_evb2pc : to capture data from evb and recording
+    proc_draw   = Process(
+                    target = target_proc_draw,
+                    args   = (databuf,lock, record_ind))
+    proc_evb2pc = Process(
+                    target = target_proc_evb2pc,
+                    args   = (  args.tty,
                                 args.baud,
                                 databuf,
                                 args.out,
                                 lock,
                                 record_ind))
     proc_draw.start()
-    proc_main.start()
+    proc_evb2pc.start()
     proc_draw.join()
-    proc_main.join()
+    proc_evb2pc.join()
 
 if __name__ == "__main__":
 
@@ -219,20 +238,20 @@ if __name__ == "__main__":
     argParser.add_argument(
         "-w",
         "--tty",
-        default="COM4", # "/dev/tty.usbmodem1234561"
-        help="Serial device (default value is None)",
+        default = "/dev/tty.usbmodem1234561", # "/dev/tty.usbmodem1234561"
+        help    = "Serial device (default value is None)",
     )
     argParser.add_argument(
         "-B",
         "--baud",
-        default="115200",
-        help="Baud (default value is 115200)"
+        default = "115200",
+        help    = "Baud (default value is 115200)"
     )
     argParser.add_argument(
         "-o",
         "--out",
-        default="audio.wav",
-        help="File where data will be written (default is audio.wav",
+        default = "audio.wav",
+        help    = "File where data will be written (default is audio.wav",
     )
 
     main(argParser.parse_args())

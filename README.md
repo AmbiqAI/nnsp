@@ -47,7 +47,8 @@ From the `nnsp/evb/` directory:
    predicted slots/intents etc.
 1. Capture your voice. Type
    ```python
-   $ python ../python/tools/audioview.py # or python3 ../python/tools/audioview.py
+   $ python ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561 
+   # or python3 ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561
    ```
    You can see a GUI popping out
 1. Push BTN0 on EVB to initiate voice recording
