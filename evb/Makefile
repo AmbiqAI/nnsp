@@ -1,4 +1,5 @@
 include make/helpers.mk
+include nnsp-make.mk
 include make/neuralspot_config.mk
 include make/neuralspot_toolchain.mk
 include make/jlink.mk
@@ -13,16 +14,16 @@ sources+=src/PcmBufClass.c
 sources+=src/arm_intrinsic_test.c
 sources+=src/$(local_app_name).cc
 
+sources += $(wildcard src/ns-core/*.c)
+sources += $(wildcard src/ns-core/*.cc)
+sources += $(wildcard src/ns-core/*.cpp)
+sources += $(wildcard src/ns-core/*.s)
+
 ifeq ($(NNSP_MODE),1)
 sources+=src/nnCntrlClass.c
 else
 sources+=src/s2iCntrlClass.c
 endif
-sources += $(wildcard src/*.s)
-sources += $(wildcard src/ns-core/*.c)
-sources += $(wildcard src/ns-core/*.cc)
-sources += $(wildcard src/ns-core/*.cpp)
-sources += $(wildcard src/ns-core/*.s)
 
 targets  := $(BINDIR)/$(local_app_name).axf
 targets  += $(BINDIR)/$(local_app_name).bin

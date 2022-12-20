@@ -8,6 +8,9 @@
 #include "ambiq_nnsp_const.h"
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
+#include "ns_energy_monitor.h"
+
+// #define ENERGY_MEASUREMENT
 
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
@@ -19,12 +22,14 @@ ns_button_config_t button_config_nnsp = {
     .button_1_flag = NULL
 };
 /// Set by app when it wants to start recording, used by callback
-bool static g_audioRecording = false;
+bool volatile static g_audioRecording = false;
 /// Set by callback when audio buffer has been copied, cleared by
 /// app when the buffer has been consumed.
-bool static g_audioReady = false;
+bool volatile static g_audioReady = false;
 /// Audio buffer for application
 int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
+uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
+
 /**
 * 
 * @brief Audio Callback (user-defined, executes in IRQ context)
@@ -42,7 +47,7 @@ audio_frame_callback(ns_audio_config_t *config, uint16_t bytesCollected) {
 
     if (g_audioRecording) {
         if (g_audioReady)
-            ns_printf("Warning - audio buffer wasnt consumed in time\n");
+            ns_lp_printf("Warning - audio buffer wasnt consumed in time\n");
 
         // Raw PCM data is 32b (12b/channel) - here we only care about one
         // channel For ringbuffer mode, this loop may feel extraneous, but it is
@@ -83,6 +88,7 @@ ns_audio_config_t audio_config = {
     .audioBuffer = (void *) &g_in16AudioDataBuffer,
 #endif
     .eAudioSource = NS_AUDIO_SOURCE_AUDADC,
+    .sampleBuffer = audadcSampleBuffer,
     .numChannels = NUM_CHANNELS,
     .numSamples = LEN_STFT_HOP,
     .sampleRate = SAMPLING_RATE,
@@ -94,18 +100,35 @@ ns_audio_config_t audio_config = {
 #endif
 };
 
+const ns_power_config_t ns_lp_audio = {.eAIPowerMode = NS_MAXIMUM_PERF,
+                                       .bNeedAudAdc = true,
+                                       .bNeedSharedSRAM = false,
+                                       .bNeedCrypto = false,
+                                       .bNeedBluetooth = false,
+                                       .bNeedUSB = false,
+                                       .bNeedIOM = false,
+                                       .bNeedAlternativeUART = false,
+                                       .b128kTCM = false,
+                                       .bEnableTempCo = false,
+                                       .bNeedITM = false};                                  
+
 int main(void) {
     s2iCntrlClass cntrl_inst;
     g_audioRecording = false;
-    ns_itm_printf_enable();
-    
-    am_hal_cachectrl_config(&am_hal_cachectrl_defaults);
-    am_hal_cachectrl_enable();
-    //
-    // Initialize the printf interface for ITM output
-    //
-    ns_debug_printf_enable();
-    ns_power_config(&ns_development_default);
+
+    ns_core_init();
+    // ns_power_config(&ns_lp_audio);
+    ns_power_config(&ns_audio_default);
+
+    #ifdef ENERGY_MEASUREMENT
+        // ns_uart_printf_enable(); // use uart to print, uses less power
+        ns_itm_printf_enable(); 
+        ns_init_power_monitor_state();
+        ns_set_power_monitor_state(NS_IDLE);
+    #else
+        ns_itm_printf_enable();
+    #endif
+
     ns_audio_init(&audio_config);
     ns_peripheral_button_init(&button_config_nnsp);
 
@@ -113,11 +136,11 @@ int main(void) {
     s2iCntrlClass_init(&cntrl_inst);
 
 #ifdef DEF_ACC32BIT_OPT
-    ns_printf("You are using \"32bit\" accumulator.\n");
+    ns_lp_printf("You are using \"32bit\" accumulator.\n");
 #else
-    ns_printf("You are using \"64bit\" accumulator.\n");
+    ns_lp_printf("You are using \"64bit\" accumulator.\n");
 #endif
-    ns_printf("The estimate time per inference (10 ms data) will be ...\n");
+    ns_lp_printf("The estimate time per inference (10 ms data) will be ...\n");
     arm_test_s2i(
         &cntrl_inst, 
         g_in16AudioDataBuffer);
@@ -126,23 +149,24 @@ int main(void) {
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
 
-    ns_printf("\nPress button to start!\n");
+    ns_lp_printf("\nPress button to start!\n");
     while (1) 
     {
         g_audioRecording = false;
         g_intButtonPressed = 0;
         
-        am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
+        ns_deep_sleep();
         
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
         {
-            ns_printf("\nYou'd pressed the button. Program start!\n");
+            ns_lp_printf("\nYou'd pressed the button. Program start!\n");
             g_intButtonPressed = 0;
             g_audioRecording = true;
             am_hal_delay_us(10);   
             while (1)
             {   
-                am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
+                ns_set_power_monitor_state(NS_DATA_COLLECTION);
+                ns_deep_sleep();
 
                 if (g_audioReady) 
                 {
@@ -153,7 +177,7 @@ int main(void) {
                     g_audioReady = false;
                 }
             }
-            ns_printf("\nPress button to start!\n");
+            ns_lp_printf("\nPress button to start!\n");
         }
     } // while(1)
 }
