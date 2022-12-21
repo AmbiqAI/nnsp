@@ -408,7 +408,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch1.txt',
+        default='nn_arch/def_se_nn_arch76_s100.txt',
         help='nn architecture')
 
     argparser.add_argument(
@@ -439,14 +439,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-t',
         '--timesteps',
-        default=500,
+        default=100,
         type=int,
         help='rnn timesteps for training and validation')
 
     argparser.add_argument(
         '-q',
         '--quantized',
-        default=True,
+        default=False,
         type=bool,
         help='is post quantization?')
 
