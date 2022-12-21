@@ -10,12 +10,12 @@
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
 #include "ns_rpc_generic_data.h"
-#define AUDIO_CAPTURE // audio capture
+
 // #define ENERGY_MEASUREMENT
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
-#ifdef AUDIO_CAPTURE
+#ifdef DEF_GUI_ENABLE
 ns_button_config_t button_config_nnsp = {
     .button_0_enable = false,
     .button_1_enable = false,
@@ -40,7 +40,7 @@ int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
 uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
 
 
-#ifdef AUDIO_CAPTURE 
+#ifdef DEF_GUI_ENABLE 
 static char msg_store[30] = "Audio16bPCM_to_WAV";
 char msg_compute[30] = "CalculateMFCC_Please";
 // Block sent to PC
@@ -188,17 +188,20 @@ int main(void) {
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
 
-#ifdef AUDIO_CAPTURE
+#ifdef DEF_GUI_ENABLE
     ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
-    ns_lp_printf("\nStart the PC-side server...\n");
-#endif
+    ns_lp_printf("\nTo start recording, on your cmd, type\n\n");
+    ns_lp_printf("\t$ python ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561 \n");
+    ns_lp_printf("\nand Press \'record\' on GUI to start!\n");
+#else
     ns_lp_printf("\nPress button to start!\n");
+#endif
     while (1) 
     {
         g_audioRecording = false;
         g_intButtonPressed = 0;
         ns_deep_sleep();
-#ifdef AUDIO_CAPTURE
+#ifdef DEF_GUI_ENABLE
         while (1)
         {
             ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
@@ -229,7 +232,7 @@ int main(void) {
                     s2iCntrlClass_exec(
                         &cntrl_inst,
                         g_in16AudioDataBuffer);
-#ifdef AUDIO_CAPTURE
+#ifdef DEF_GUI_ENABLE
                     ns_rpc_data_sendBlockToPC(&outBlock);
                     ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
                     if (resultBlock.buffer.data[0]==0)

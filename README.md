@@ -34,25 +34,35 @@ There are few disadvantages in the original model:
 Alternatively, we provide a solution to overcome those issues in this example. We apply recurrent neural net (RNN) to our model. RNN is a very natural way to deal with real-time process data and dynamic length of different pronunciations. 
 
 ## Compiling and Running a Pre-Trained Model
-
+### `Plain EVB:`
 From the `nnsp/evb/` directory:
 
-1. Plug a mic into the 3.5mm port
 1. `make clean`
-1. (64bit acumulator) `make ` or `make BOARD=apollo4b` depending on board type. \
+2. (64bit acumulator) `make ` or `make BOARD=apollo4b` depending on board type. \
 (32bit acumulator) `make ACC32BIT_OPT=1` or `make ACC32BIT_OPT=1 BOARD=apollo4b` depending on board type
-1. `make deploy` Ensure your board is connected via the JLINK USB port and
+    
+3. `make deploy` Ensure your board is connected via the JLINK USB port and
    turned on first.
-1. `make view` will provide SWO output as the device is running, showing 
+4. Plug a mic into the 3.5mm port, and push BTN0 to initiate voice recording
+5. `make view` will provide SWO output as the device is running, showing 
    predicted slots/intents etc.
-1. Capture your voice. Type
-   ```python
-   $ python ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561 
-   # or python3 ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561
+
+### `EVB and GUI recording`:
+From the `nnsp/evb/` directory:
+
+1. `make clean`
+2. `make GUI_ENABLE=1`
+3. `make deploy` Prepare two USB cables. Ensure your board is connected via both the `JLINK USB port` and the `audio USB port`. Then turn on the power on EVB.
+4. Plug a mic into the 3.5mm port, and push BTN0 to initiate voice recording
+5. `make view` will provide SWO output as the device is running, showing 
+   predicted slots/intents etc.
+6. On your cmd, type
+   ```cmd
+   $ python ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561
    ```
-   You can see a GUI popping out
-1. Push BTN0 on EVB to initiate voice recording
-1. Press `record` on the GUI to start record your voice. And then press `stop` on the GUI to stop the record. Check the audio file on `nnsp/evb/audio_result/audio.wav`
+   You should see a GUI popping out.
+   You might need to change the option `--tty` depending on your OS.
+7. On your GUI, prress `record` to start recording and `stop` to stop recording. The recorded file `audio.wav` is under the folder `nnsp/evb/audio_result/`.
 
 `Note`: Due to the authority of the third-part licenses related to the training datasets (see [here](docs/README.md)), we couldn't provide a well-trained model here. The weight tables of NN we deployed on evb here is just in a random number. And the result is basically incorrect. Once you have the permission to access the data. please download it and train the model as  the procedure below. 
 ## Re-Training a New Model

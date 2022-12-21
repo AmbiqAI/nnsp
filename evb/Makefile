@@ -4,7 +4,6 @@ include make/neuralspot_config.mk
 include make/neuralspot_toolchain.mk
 include make/jlink.mk
 include autogen.mk
-
 # local_app_name := main <-- moved to neuralspot_config
 TARGET = $(local_app_name)
 sources:=src/def_nn0_s2i.c
@@ -31,6 +30,10 @@ targets  += $(BINDIR)/$(local_app_name).bin
 ifeq ($(ACC32BIT_OPT),1)
 DEFINES+=DEF_ACC32BIT_OPT
 endif
+ifeq ($(GUI_ENABLE),1)
+DEFINES+=DEF_GUI_ENABLE
+endif
+
 objects      = $(call source-to-object,$(sources))
 dependencies = $(subst .o,.d,$(objects))
 

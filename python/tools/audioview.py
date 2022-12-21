@@ -7,12 +7,13 @@ import sys
 import wave
 import multiprocessing
 from multiprocessing import Process, Array, Lock
+import time
 import erpc
 import GenericDataOperations_EvbToPc
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
-import time
+
 # Define the RPC service handlers - one for each EVB-to-PC RPC function
 FRAMES_TO_SHOW  = 500
 SAMPLING_RATE   = 16000
@@ -99,8 +100,7 @@ class DataServiceClass:
 
         return 0
 
-    def ns_rpc_data_fetchBlockFromPC(self, block):
-        print("Got a ns_rpc_data_fetchBlockFromPC call.")
+    def ns_rpc_data_fetchBlockFromPC(self, block): # pylint: disable=invalid-name
         sys.stdout.flush()
         return 0
 
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     argParser.add_argument(
         "-w",
         "--tty",
-        default = "COM4", # "/dev/tty.usbmodem1234561"
+        default = "/dev/tty.usbmodem1234561", # "/dev/tty.usbmodem1234561"
         help    = "Serial device (default value is None)",
     )
     argParser.add_argument(
