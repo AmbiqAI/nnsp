@@ -108,4 +108,3 @@ NeuralNetClass net_s2i = {
 	}, // kernel_rec
 
 };
-

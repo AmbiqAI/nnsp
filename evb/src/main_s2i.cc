@@ -9,18 +9,27 @@
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
+#include "ns_rpc_generic_data.h"
 
 // #define ENERGY_MEASUREMENT
-
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
+#ifdef DEF_GUI_ENABLE
+ns_button_config_t button_config_nnsp = {
+    .button_0_enable = false,
+    .button_1_enable = false,
+    .button_0_flag = NULL,
+    .button_1_flag = NULL
+};
+#else
 ns_button_config_t button_config_nnsp = {
     .button_0_enable = true,
     .button_1_enable = false,
     .button_0_flag = &g_intButtonPressed,
     .button_1_flag = NULL
 };
+#endif
 /// Set by app when it wants to start recording, used by callback
 bool volatile static g_audioRecording = false;
 /// Set by callback when audio buffer has been copied, cleared by
@@ -30,6 +39,34 @@ bool volatile static g_audioReady = false;
 int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
 uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
 
+
+#ifdef DEF_GUI_ENABLE 
+static char msg_store[30] = "Audio16bPCM_to_WAV";
+char msg_compute[30] = "CalculateMFCC_Please";
+// Block sent to PC
+static dataBlock outBlock = {
+    .length = LEN_STFT_HOP * sizeof(int16_t),
+    .dType = uint8_e,
+    .description = msg_store,
+    .cmd = write_cmd,
+    .buffer = {.data = (uint8_t *) g_in16AudioDataBuffer, // point this to audio buffer
+               .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
+// Block sent to PC for computation
+dataBlock computeBlock = {
+    .length = LEN_STFT_HOP * sizeof(int16_t),
+    .dType = uint8_e,
+    .description = msg_compute,
+    .cmd = extract_cmd,
+    .buffer = {.data = (uint8_t *) g_in16AudioDataBuffer, // point this to audio buffer
+               .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
+
+dataBlock resultBlock;
+// Block sent to PC for computation
+ns_rpc_config_t rpcConfig = {.mode = NS_RPC_GENERICDATA_CLIENT,
+                            .sendBlockToEVB_cb = NULL,
+                            .fetchBlockFromEVB_cb = NULL,
+                            .computeOnEVB_cb = NULL};
+#endif
 /**
 * 
 * @brief Audio Callback (user-defined, executes in IRQ context)
@@ -146,17 +183,39 @@ int main(void) {
         g_in16AudioDataBuffer);
     test_fft();
     test_feat();
+    // test_upload_pc();
+    // arm_test_se();
     // reset all internal states
     s2iCntrlClass_reset(&cntrl_inst);
 
+#ifdef DEF_GUI_ENABLE
+    ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
+    ns_lp_printf("\nTo start recording, on your cmd, type\n\n");
+    ns_lp_printf("\t$ python ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561 \n");
+    ns_lp_printf("\nand Press \'record\' on GUI to start!\n");
+#else
     ns_lp_printf("\nPress button to start!\n");
+#endif
     while (1) 
     {
         g_audioRecording = false;
         g_intButtonPressed = 0;
-        
         ns_deep_sleep();
-        
+#ifdef DEF_GUI_ENABLE
+        while (1)
+        {
+            ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
+            if (resultBlock.buffer.data[0]==1)
+            {
+                g_intButtonPressed = 1;
+                ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                break;
+            }
+            ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+            ns_printf("%d\n", resultBlock.buffer.data[0]);
+            am_hal_delay_us(20000); 
+        }
+#endif
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
         {
             ns_lp_printf("\nYou'd pressed the button. Program start!\n");
@@ -167,15 +226,28 @@ int main(void) {
             {   
                 ns_set_power_monitor_state(NS_DATA_COLLECTION);
                 ns_deep_sleep();
-
                 if (g_audioReady) 
                 {
                     // execution of each time frame data
                     s2iCntrlClass_exec(
                         &cntrl_inst,
                         g_in16AudioDataBuffer);
+#ifdef DEF_GUI_ENABLE
+                    ns_rpc_data_sendBlockToPC(&outBlock);
+                    ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
+                    if (resultBlock.buffer.data[0]==0)
+                    {
+                        g_audioRecording = false;
+                        g_audioReady = false;
+                        g_intButtonPressed = 0;
+                        ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                        break;
+                    }
+                    ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+#endif
                     g_audioReady = false;
                 }
+                
             }
             ns_lp_printf("\nPress button to start!\n");
         }

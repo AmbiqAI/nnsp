@@ -108,4 +108,3 @@ NeuralNetClass net_vad = {
 	}, // kernel_rec
 
 };
-

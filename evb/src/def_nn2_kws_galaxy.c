@@ -109,4 +109,3 @@ NeuralNetClass net_kws_galaxy = {
 	}, // kernel_rec
 
 };
-
