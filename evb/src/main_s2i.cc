@@ -9,17 +9,27 @@
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
+#include "ns_rpc_generic_data.h"
 #define AUDIO_CAPTURE // audio capture
 // #define ENERGY_MEASUREMENT
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
 ///Button Peripheral Config Struct
+#ifdef AUDIO_CAPTURE
+ns_button_config_t button_config_nnsp = {
+    .button_0_enable = false,
+    .button_1_enable = false,
+    .button_0_flag = NULL,
+    .button_1_flag = NULL
+};
+#else
 ns_button_config_t button_config_nnsp = {
     .button_0_enable = true,
     .button_1_enable = false,
     .button_0_flag = &g_intButtonPressed,
     .button_1_flag = NULL
 };
+#endif
 /// Set by app when it wants to start recording, used by callback
 bool volatile static g_audioRecording = false;
 /// Set by callback when audio buffer has been copied, cleared by
@@ -31,22 +41,31 @@ uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
 
 
 #ifdef AUDIO_CAPTURE 
-#include "ns_rpc_generic_data.h"
 static char msg_store[30] = "Audio16bPCM_to_WAV";
-
+char msg_compute[30] = "CalculateMFCC_Please";
 // Block sent to PC
 static dataBlock outBlock = {
     .length = LEN_STFT_HOP * sizeof(int16_t),
     .dType = uint8_e,
     .description = msg_store,
     .cmd = write_cmd,
-    .buffer = {.data = (uint8_t *)g_in16AudioDataBuffer, // point this to audio buffer
+    .buffer = {.data = (uint8_t *) g_in16AudioDataBuffer, // point this to audio buffer
                .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
 // Block sent to PC for computation
-static ns_rpc_config_t rpcConfig = {.mode = NS_RPC_GENERICDATA_CLIENT,
-                                    .sendBlockToEVB_cb = NULL,
-                                    .fetchBlockFromEVB_cb = NULL,
-                                    .computeOnEVB_cb = NULL};
+dataBlock computeBlock = {
+    .length = LEN_STFT_HOP * sizeof(int16_t),
+    .dType = uint8_e,
+    .description = msg_compute,
+    .cmd = extract_cmd,
+    .buffer = {.data = (uint8_t *) g_in16AudioDataBuffer, // point this to audio buffer
+               .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
+
+dataBlock resultBlock;
+// Block sent to PC for computation
+ns_rpc_config_t rpcConfig = {.mode = NS_RPC_GENERICDATA_CLIENT,
+                            .sendBlockToEVB_cb = NULL,
+                            .fetchBlockFromEVB_cb = NULL,
+                            .computeOnEVB_cb = NULL};
 #endif
 /**
 * 
@@ -179,7 +198,21 @@ int main(void) {
         g_audioRecording = false;
         g_intButtonPressed = 0;
         ns_deep_sleep();
-        
+#ifdef AUDIO_CAPTURE
+        while (1)
+        {
+            ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
+            if (resultBlock.buffer.data[0]==1)
+            {
+                g_intButtonPressed = 1;
+                ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                break;
+            }
+            ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+            ns_printf("%d\n", resultBlock.buffer.data[0]);
+            am_hal_delay_us(20000); 
+        }
+#endif
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
         {
             ns_lp_printf("\nYou'd pressed the button. Program start!\n");
@@ -198,6 +231,16 @@ int main(void) {
                         g_in16AudioDataBuffer);
 #ifdef AUDIO_CAPTURE
                     ns_rpc_data_sendBlockToPC(&outBlock);
+                    ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
+                    if (resultBlock.buffer.data[0]==0)
+                    {
+                        g_audioRecording = false;
+                        g_audioReady = false;
+                        g_intButtonPressed = 0;
+                        ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                        break;
+                    }
+                    ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
 #endif
                     g_audioReady = false;
                 }

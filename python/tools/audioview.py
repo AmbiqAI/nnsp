@@ -5,13 +5,14 @@ import os
 import argparse
 import sys
 import wave
+import multiprocessing
 from multiprocessing import Process, Array, Lock
 import erpc
 import GenericDataOperations_EvbToPc
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
-
+import time
 # Define the RPC service handlers - one for each EVB-to-PC RPC function
 FRAMES_TO_SHOW  = 500
 SAMPLING_RATE   = 16000
@@ -98,17 +99,46 @@ class DataServiceClass:
 
         return 0
 
+    def ns_rpc_data_fetchBlockFromPC(self, block):
+        print("Got a ns_rpc_data_fetchBlockFromPC call.")
+        sys.stdout.flush()
+        return 0
+
+    def ns_rpc_data_computeOnPC(self, in_block, result_block): # pylint: disable=invalid-name
+        """
+        result_block to indicate to record or stop
+        """
+        self.lock.acquire()
+        is_record = self.is_record[0]
+        self.lock.release()
+        if (in_block.cmd == GenericDataOperations_EvbToPc.common.command.extract_cmd) and (
+            in_block.description == "CalculateMFCC_Please"):
+
+            result_block.value = GenericDataOperations_EvbToPc.common.dataBlock(
+                description="*\0",
+                dType=GenericDataOperations_EvbToPc.common.dataType.uint8_e,
+                cmd=GenericDataOperations_EvbToPc.common.command.generic_cmd,
+                buffer=bytearray([is_record]),
+                length=1,
+            )
+
+        # print(result_block)
+        sys.stdout.flush()
+        return 0
+
 class VisualDataClass:
     """
     Visual the audio data from EVB
     """
-    def __init__(self, databuf, lock, is_record):
+    def __init__(self, databuf, lock, is_record, event_stop):
         self.databuf = databuf
         self.lock    = lock
         self.is_record = is_record
+        self.event_stop = event_stop
         secs2show = FRAMES_TO_SHOW * HOP_SIZE/SAMPLING_RATE
         self.xdata = np.arange(FRAMES_TO_SHOW * HOP_SIZE) / SAMPLING_RATE
         self.fig, self.ax_handle = plt.subplots()
+        self.fig.canvas.mpl_connect('close_event', self.handle_close)
         plt.subplots_adjust(bottom=0.35)
         self.lock.acquire()
         np_databuf = databuf[0:]
@@ -149,6 +179,17 @@ class VisualDataClass:
                             self.callback_recordstart)
         plt.show()
 
+    def handle_close(self, event):
+        """
+        Finish everything when you close your plot
+        """
+        self.lock.acquire()
+        self.is_record[0] = 0
+        self.lock.release()
+        print('Window close')
+        time.sleep(0.05)
+        self.event_stop.set()
+
     def callback_recordstop(self, event):
         """
         for stop button
@@ -185,11 +226,11 @@ class VisualDataClass:
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
-def target_proc_draw(databuf, lock, recording):
+def target_proc_draw(databuf, lock, recording, event_stop):
     """
     one of multiprocesses: draw
     """
-    VisualDataClass(databuf, lock, recording)
+    VisualDataClass(databuf, lock, recording, event_stop)
 
 def target_proc_evb2pc(tty, baud, databuf, wavout, lock, is_record):
     """
@@ -208,6 +249,7 @@ def main(args):
     """
     main
     """
+    event_stop = multiprocessing.Event()
     lock = Lock()
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
     record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
@@ -216,7 +258,7 @@ def main(args):
     # 2. proc_evb2pc : to capture data from evb and recording
     proc_draw   = Process(
                     target = target_proc_draw,
-                    args   = (databuf,lock, record_ind))
+                    args   = (databuf,lock, record_ind, event_stop))
     proc_evb2pc = Process(
                     target = target_proc_evb2pc,
                     args   = (  args.tty,
@@ -227,8 +269,13 @@ def main(args):
                                 record_ind))
     proc_draw.start()
     proc_evb2pc.start()
-    proc_draw.join()
-    proc_evb2pc.join()
+    while True:
+        if event_stop.is_set():
+            proc_draw.terminate()
+            proc_evb2pc.terminate()
+            #Terminating main process
+            sys.exit(1)
+        time.sleep(0.5)
 
 if __name__ == "__main__":
 
@@ -238,7 +285,7 @@ if __name__ == "__main__":
     argParser.add_argument(
         "-w",
         "--tty",
-        default = "/dev/tty.usbmodem1234561", # "/dev/tty.usbmodem1234561"
+        default = "COM4", # "/dev/tty.usbmodem1234561"
         help    = "Serial device (default value is None)",
     )
     argParser.add_argument(
