@@ -408,7 +408,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch76_s100.txt',
+        default='nn_arch/def_se_nn_arch128.txt',
         help='nn architecture')
 
     argparser.add_argument(
@@ -453,7 +453,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-l',
         '--learning_rate',
-        default = 4 * 10**-4,
+        default = 1 * 10**-4,
         type=float,
         help='learning rate')
 

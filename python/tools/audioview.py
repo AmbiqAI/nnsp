@@ -29,24 +29,23 @@ class DataServiceClass:
         self.wavename       = wavout
         self.databuf        = databuf
         self.lock           = lock
-        self.is_record  = is_record
+        self.is_record      = is_record
 
     def wavefile_init(self, wavename):
         """
         wavefile initialization
         """
-        # daytime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         fldr = 'audio_result'
         os.makedirs(fldr, exist_ok=True)
-        wavefile = wave.open(f'{fldr}/' + wavename, 'wb')
+        wavefile = wave.open(f'{fldr}/{wavename}', 'wb')
         wavefile.setnchannels(1)
         wavefile.setsampwidth(2)
         wavefile.setframerate(16000)
         return wavefile
 
-    def ns_rpc_data_sendBlockToPC(self, block): # pylint: disable=invalid-name
+    def ns_rpc_data_sendBlockToPC(self, pcmBlock): # pylint: disable=invalid-name
         """
-        data sent from EVB to PC.
+        callback function that data sent from EVB to PC.
         """
         self.lock.acquire()
         is_record = self.is_record[0]
@@ -70,11 +69,11 @@ class DataServiceClass:
             #             .dataLength = SAMPLES_IN_FRAME * sizeof(int16_t)}};
 
             if self.wavefile: # wavefile exists
-                if (block.cmd == GenericDataOperations_EvbToPc.common.command.write_cmd) \
-                     and (block.description == "Audio16bPCM_to_WAV"):
+                if (pcmBlock.cmd == GenericDataOperations_EvbToPc.common.command.write_cmd) \
+                     and (pcmBlock.description == "Audio16bPCM_to_WAV"):
 
                     self.lock.acquire()
-                    self.wavefile.writeframesraw(block.buffer)
+                    self.wavefile.writeframesraw(pcmBlock.buffer)
                     self.lock.release()
             else: # wavefile doesn't exist
                 print('Start recording')
@@ -83,7 +82,7 @@ class DataServiceClass:
 
             # Data is a 16 bit PCM sample
             self.lock.acquire()
-            fdata = np.frombuffer(block.buffer, dtype=np.int16).copy() / 32768.0
+            fdata = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy() / 32768.0
             self.lock.release()
             start = self.cyc_count * HOP_SIZE
             if self.cyc_count == 0:
@@ -100,13 +99,20 @@ class DataServiceClass:
 
         return 0
 
-    def ns_rpc_data_fetchBlockFromPC(self, block): # pylint: disable=invalid-name
+    def ns_rpc_data_fetchBlockFromPC(self, block): # pylint: disable=invalid-name, unused-argument
+        """
+        callback function that Data fetching
+        """
         sys.stdout.flush()
         return 0
 
-    def ns_rpc_data_computeOnPC(self, in_block, result_block): # pylint: disable=invalid-name
+    def ns_rpc_data_computeOnPC( # pylint: disable=invalid-name
+            self,
+            in_block,       # like a request block from EVB
+            IsRecordBlock):  # send the result_block to EVB
         """
-        result_block to indicate to record or stop
+        callback function that sending result_block to EVB
+            that indicating to record or stop
         """
         self.lock.acquire()
         is_record = self.is_record[0]
@@ -114,15 +120,14 @@ class DataServiceClass:
         if (in_block.cmd == GenericDataOperations_EvbToPc.common.command.extract_cmd) and (
             in_block.description == "CalculateMFCC_Please"):
 
-            result_block.value = GenericDataOperations_EvbToPc.common.dataBlock(
-                description="*\0",
-                dType=GenericDataOperations_EvbToPc.common.dataType.uint8_e,
-                cmd=GenericDataOperations_EvbToPc.common.command.generic_cmd,
-                buffer=bytearray([is_record]),
-                length=1,
+            data2pc = [is_record]
+            IsRecordBlock.value = GenericDataOperations_EvbToPc.common.dataBlock(
+                description ="*\0",
+                dType       = GenericDataOperations_EvbToPc.common.dataType.uint8_e,
+                cmd         = GenericDataOperations_EvbToPc.common.command.generic_cmd,
+                buffer      = bytearray(data2pc),
+                length      = len(data2pc),
             )
-
-        # print(result_block)
         sys.stdout.flush()
         return 0
 
@@ -179,7 +184,7 @@ class VisualDataClass:
                             self.callback_recordstart)
         plt.show()
 
-    def handle_close(self, event):
+    def handle_close(self, event): # pylint: disable=unused-argument
         """
         Finish everything when you close your plot
         """
@@ -188,7 +193,7 @@ class VisualDataClass:
         self.lock.release()
         print('Window close')
         time.sleep(0.05)
-        self.event_stop.set()
+        self.event_stop.set() # let main function know program should be terminated now
 
     def callback_recordstop(self, event):
         """
@@ -254,7 +259,7 @@ def main(args):
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
     record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
     # we use two multiprocesses to handle real-time visualization and recording
-    # 1. proc_draw   : for visualization
+    # 1. proc_draw   : to visualize
     # 2. proc_evb2pc : to capture data from evb and recording
     proc_draw   = Process(
                     target = target_proc_draw,
@@ -269,6 +274,7 @@ def main(args):
                                 record_ind))
     proc_draw.start()
     proc_evb2pc.start()
+    # monitor if program should be terminated
     while True:
         if event_stop.is_set():
             proc_draw.terminate()

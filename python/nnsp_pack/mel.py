@@ -5,7 +5,7 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from .converter_fix_point import fakefix
+from converter_fix_point import fakefix
 
 def gen_mel_bank(
                 fftsize         = 512,
@@ -23,13 +23,13 @@ def gen_mel_bank(
 
     fbank = np.zeros((nfilt, int(np.floor(fftsize / 2 + 1))))
     if make_c_table:
-        filename='../lib_nnsp/src/melSpec_coeff.c'
+        filename = f'../../ns-nnsp/src/melSpec_coeff_nfilt{nfilt}.c'
         file = open(filename, 'w') # pylint: disable=unspecified-encoding
         file.write('#include <stdint.h>\n')
         file.write('#include "ambiq_nnsp_const.h"\n')
-        file.write('const int16_t num_mfltrBank = NUM_MELBANKS;\n')
+        file.write(f'const int16_t num_mfltrBank_nfilt{nfilt} = {nfilt};\n')
         file.write(f'//const int16_t num_fft = {fftsize};\n' )
-        file.write('const int16_t mfltrBank_coeff[]={')
+        file.write(f"const int16_t mfltrBank_coeff_nfilt{nfilt}[]={{")
 
     for idx in range(1, nfilt + 1):
         f_m_minus = int(bin_mel[idx - 1])   # left
@@ -57,9 +57,9 @@ def gen_mel_bank(
 
 if __name__ == '__main__':
     fbanks = gen_mel_bank(  fftsize         = 512,
-                            nfilt           = 40,
+                            nfilt           = 72,
                             sample_rate     = 16000,
-                            make_c_table    = False)
+                            make_c_table    = True)
     fig = plt.figure()
     for i, bank in enumerate(fbanks):
         plt.plot(bank)

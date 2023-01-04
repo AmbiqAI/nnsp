@@ -28,7 +28,9 @@ int NNSPClass_init(
         const int32_t* pt_mean,
         const int32_t* pt_stdR,
 	    int16_t * pt_thresh_prob,
-	    int16_t *pt_th_count_trigger)
+	    int16_t *pt_th_count_trigger,
+        int16_t num_mfltrBank,
+        int16_t num_dnsmpl)
 {
 
     pt_inst->nn_id = nn_id;
@@ -41,9 +43,10 @@ int NNSPClass_init(
             (FeatureClass*)pt_inst->pt_feat,
             pt_mean,
             pt_stdR,
-            ((NeuralNetClass*) pt_inst->pt_net)->qbit_input[0]);
+            ((NeuralNetClass*) pt_inst->pt_net)->qbit_input[0],
+            num_mfltrBank);
 
-    pt_inst->num_dnsmpl = 2;
+    pt_inst->num_dnsmpl = num_dnsmpl;
 
     pt_inst->pt_thresh_prob = pt_thresh_prob;
 
@@ -80,49 +83,55 @@ int16_t NNSPClass_exec(
     NeuralNetClass* pt_net = (NeuralNetClass*) pt_inst->pt_net;
     int8_t debug_layer = -1;
     FeatureClass_execute(pt_feat, rawPCM);
-    
-    if (pt_inst->slides == 1)
+    if (pt_inst->num_dnsmpl == 1)
     {
-        #ifdef ENERGYMODE
-            am_set_power_monitor_state(AM_AI_INFERING);
-        #endif
-#if CHECK_POWER
-        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
-#endif
-        NeuralNetClass_exe(
-            pt_net, 
-            pt_feat->normFeatContext, 
-            output,
-            debug_layer);
-        switch (pt_inst->nn_id)
-        {
-        case s2i_id:
-            s2i_post_proc(
-                pt_inst,
-                output,
-                &pt_inst->trigger);
-            break;
-
-        case kws_galaxy_id:
-            binary_post_proc(
-                pt_inst,
-                output,
-                &pt_inst->trigger);
-            break;
-
-        case vad_id:
-            binary_post_proc(
-                pt_inst,
-                output,
-                &pt_inst->trigger);
-            break;
-        }
-
-#if CHECK_POWER
-        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-#endif
+        
     }
-    pt_inst->slides = (pt_inst->slides + 1) % 2;
+    else if (pt_inst->num_dnsmpl == 2)
+    {
+        if (pt_inst->slides == 1)
+        {
+            #ifdef ENERGYMODE
+                am_set_power_monitor_state(AM_AI_INFERING);
+            #endif
+    #if CHECK_POWER
+            am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
+    #endif
+            NeuralNetClass_exe(
+                pt_net, 
+                pt_feat->normFeatContext, 
+                output,
+                debug_layer);
+            switch (pt_inst->nn_id)
+            {
+            case s2i_id:
+                s2i_post_proc(
+                    pt_inst,
+                    output,
+                    &pt_inst->trigger);
+                break;
+
+            case kws_galaxy_id:
+                binary_post_proc(
+                    pt_inst,
+                    output,
+                    &pt_inst->trigger);
+                break;
+
+            case vad_id:
+                binary_post_proc(
+                    pt_inst,
+                    output,
+                    &pt_inst->trigger);
+                break;
+            }
+
+    #if CHECK_POWER
+            am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
+    #endif
+        }
+        pt_inst->slides = (pt_inst->slides + 1) % 2;
+    }
 	return pt_inst->trigger;
 }
 

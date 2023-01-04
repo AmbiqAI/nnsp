@@ -1,4 +1,4 @@
-#include "ambiq_stdint.h"
+                                                                                                     #include "ambiq_stdint.h"
 #include "spectrogram_module.h"
 #include "feature_module.h"
 #include "minmax.h"
@@ -7,13 +7,13 @@
 #include "fixlog10.h"
 #include "ambiq_nnsp_debug.h"
 #define LOG10_2POW_N15_Q15 (-147963)
-int32_t spec[LEN_FFT_NNSP << 1];
-
+int32_t GLOBAL_PSPEC[512];
 void FeatureClass_construct(
-	FeatureClass* ps,
+		FeatureClass* ps,
 		const int32_t* norm_mean,
 		const int32_t* norm_stdR,
-		int8_t qbit_output)
+		int8_t qbit_output,
+		int16_t num_mfltrBank)
 {
 	stftModule_construct(&ps->state_stftModule);
 	ps->pt_norm_mean = norm_mean;
@@ -21,6 +21,11 @@ void FeatureClass_construct(
 	ps->num_context = NUM_FEATURE_CONTEXT;
 	ps->dim_feat = DIMEMSION_FEATURE;
 	ps->qbit_output = qbit_output;
+	ps->num_mfltrBank = num_mfltrBank;
+	if (ps->num_mfltrBank==72)
+		ps->p_melBanks = mfltrBank_coeff_nfilt72;
+	else if (ps->num_mfltrBank==40)
+		ps->p_melBanks = mfltrBank_coeff_nfilt40;
 }
 
 void FeatureClass_setDefault(FeatureClass* ps)
@@ -47,7 +52,8 @@ void FeatureClass_setDefault(FeatureClass* ps)
 void FeatureClass_execute(FeatureClass*ps,
 							int16_t* input)
 {
-	int32_t* pspec = spec;
+	int32_t* pspec = GLOBAL_PSPEC;
+	int32_t* spec = ps->state_stftModule.spec;
 	int shift = (ps->num_context - 1) * ps->dim_feat;
 	int i;
 	int64_t tmp;
@@ -59,10 +65,13 @@ void FeatureClass_execute(FeatureClass*ps,
 	stftModule_analyze(&ps->state_stftModule, input, spec);
 	spec2pspec(pspec, spec, 1 + (LEN_FFT_NNSP >> 1));
 #else
-	stftModule_analyze_arm(&ps->state_stftModule, input, spec);
+	stftModule_analyze_arm(
+		(void*) &ps->state_stftModule,
+		input, // q15
+		spec); // q21
 	spec2pspec_arm(pspec, spec, 1 + (LEN_FFT_NNSP >> 1));
 #endif
-	melSpecProc(pspec, ps->feature);
+	melSpecProc(pspec, ps->feature, ps->p_melBanks, ps->num_mfltrBank);
 	log10_vec(ps->feature, ps->feature, ps->dim_feat, 15);
 	for (i = 0; i < ps->dim_feat; i++)
 	{

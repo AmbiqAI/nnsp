@@ -32,7 +32,9 @@ int NNSPClass_init(
 	const int32_t* pt_mean,
 	const int32_t* pt_stdR,
 	int16_t* pt_thresh_prob,
-	int16_t* pt_th_count_trigger);
+	int16_t* pt_th_count_trigger,
+	int16_t num_mfltrBank,
+	int16_t num_dnsmpl);
 
 int NNSPClass_reset(NNSPClass* pt_inst);
 

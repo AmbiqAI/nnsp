@@ -8,6 +8,8 @@ typedef struct
 {
 	stftModule state_stftModule;
 	int32_t feature[MAX_SIZE_FEATURE];
+	int16_t num_mfltrBank;
+	const int16_t *p_melBanks;
 	// contextual normalized features
 	int16_t normFeatContext[NUM_FEATURE_CONTEXT * MAX_SIZE_FEATURE]; 
 	int16_t num_context;
@@ -20,7 +22,8 @@ typedef struct
 void FeatureClass_construct(FeatureClass* ps,
 								const int32_t *norm_mean, 
 								const int32_t *norm_stdR,
-								int8_t qbit_output);
+								int8_t qbit_output,
+								int16_t num_mfltrBank);
 
 void FeatureClass_setDefault(FeatureClass* ps);
 

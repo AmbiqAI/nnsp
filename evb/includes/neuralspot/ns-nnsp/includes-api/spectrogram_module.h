@@ -12,7 +12,7 @@ typedef struct
 	int16_t len_fft;
 	int16_t dataBuffer[512];
 	const int16_t* window;
-}stftModule;
+} stftModule;
 
 int stftModule_construct(stftModule* ps);
 

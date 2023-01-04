@@ -1,13 +1,14 @@
 #include "ambiq_stdint.h"
 #include "melSpecProc.h"
 #include "minmax.h"
-extern const int16_t num_mfltrBank;
 extern const int16_t mfltrBank_coeff[];
+extern const int16_t mfltrBank_coeff_nfilt72[];
 void melSpecProc(int32_t *specs,
-                 int32_t *melSpecs)
+                 int32_t *melSpecs,
+                 const int16_t *p_melBanks,
+                 int16_t num_mfltrBank)
 {
     int i, j;
-    const int16_t *p_melBanks = mfltrBank_coeff;
     int16_t start_bin, end_bin;
     int64_t mac;
 

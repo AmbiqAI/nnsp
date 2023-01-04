@@ -6,13 +6,19 @@ extern "C"
 #endif
 #include <stdint.h>
 #include "ambiq_nnsp_debug.h"
+#include <arm_math.h>
+#include "ambiq_nnsp_const.h"
 typedef struct
 {
 	int16_t len_win;
 	int16_t hop;
 	int16_t len_fft;
-	int16_t dataBuffer[512];
+	int16_t dataBuffer[LEN_FFT_NNSP];
+	int16_t odataBuffer[LEN_FFT_NNSP];
 	const int16_t* window;
+	arm_rfft_instance_q31 fft_st;
+	arm_rfft_instance_q31 ifft_st;
+	int32_t spec[LEN_FFT_NNSP << 1];
 }stftModule;
 
 int stftModule_construct(stftModule* ps);
@@ -37,8 +43,12 @@ void spec2pspec_arm(
 
 int stftModule_analyze_arm(
 		void* ps,
-		int16_t* x, // q15
-		int32_t* y); // q21
+		int16_t* input, // q15
+		int32_t* output); // q21
+int stftModule_synthesize_arm(
+		void* ps,
+		int16_t* x,
+		int32_t* y);
 #endif
 
 #ifdef __cplusplus
