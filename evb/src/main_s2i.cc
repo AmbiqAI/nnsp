@@ -9,6 +9,9 @@
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
+
+#include <arm_math.h>
+
 #define RUN_SPEED_TESTING 1
 #ifdef DEF_GUI_ENABLE
 #include "ns_rpc_generic_data.h"
@@ -189,7 +192,9 @@ int main(void) {
         g_in16AudioDataBuffer);
     test_feat();
     test_fft();
+    // test_fft_ifft();
     ns_lp_printf("\n");
+    
 #endif
 
 #ifdef DEF_GUI_ENABLE
@@ -225,6 +230,7 @@ int main(void) {
 #endif
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
         {
+            s2iCntrlClass_reset(&cntrl_inst);
             ns_lp_printf("\nYou'd pressed the button. Program start!\n");
             g_intButtonPressed = 0;
             g_audioRecording = true;

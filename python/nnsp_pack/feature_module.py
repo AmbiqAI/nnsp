@@ -389,7 +389,7 @@ if __name__ == '__main__':
     MAKE_C_TABLE     = False
 
     if MAKE_DATA:
-        WAVEFILE ='../test_nnsp/wav/test_speech.wav'
+        WAVEFILE ='test_wavs/audio.wav'
 
         speech, sample_rate = sf.read(WAVEFILE)
 
@@ -432,8 +432,9 @@ if __name__ == '__main__':
         print(specs.shape)
 
     else:
-        spec_py = np.loadtxt('dump/file_feat_py', dtype=int)
-        spec_c = np.loadtxt('dump/file_feat_c', dtype=int)
+        fname = "file_feat"
+        spec_py = np.loadtxt(f'dump/{fname}_py', dtype=int)
+        spec_c = np.loadtxt(f'C:\\Users\\Paul Chen\\Documents\\nnsp_sol\\nnsp_simu\\dump\\{fname}_c', dtype=int)
         err =  np.abs(spec_py - spec_c).max()
         print(f"Max error = {err}")
 

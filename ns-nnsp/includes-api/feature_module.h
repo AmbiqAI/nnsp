@@ -19,11 +19,12 @@ typedef struct
 	int8_t qbit_output;
 }FeatureClass;
 
-void FeatureClass_construct(FeatureClass* ps,
-								const int32_t *norm_mean, 
-								const int32_t *norm_stdR,
-								int8_t qbit_output,
-								int16_t num_mfltrBank);
+void FeatureClass_construct(
+		FeatureClass* ps,
+		const int32_t *norm_mean, 
+		const int32_t *norm_stdR,
+		int8_t qbit_output,
+		int16_t num_mfltrBank);
 
 void FeatureClass_setDefault(FeatureClass* ps);
 

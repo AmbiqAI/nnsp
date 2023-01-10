@@ -7,6 +7,7 @@
 #include "neural_nets.h"
 #include "minmax.h"
 #include "nnsp_identification.h"
+#include "ns_ambiqsuite_harness.h"
 #define CHECK_POWER 0
 
 #if CHECK_POWER
@@ -19,7 +20,7 @@
 #include <math.h>
 #include <stdio.h>
 #endif
-
+int16_t glob_se_out[LEN_STFT_HOP];
 int NNSPClass_init(
         NNSPClass* pt_inst,
         void* pt_net,
@@ -40,7 +41,7 @@ int NNSPClass_init(
     pt_inst->pt_net  = (void*) pt_net;
 
     FeatureClass_construct(
-            (FeatureClass*)pt_inst->pt_feat,
+            (FeatureClass*) pt_inst->pt_feat,
             pt_mean,
             pt_stdR,
             ((NeuralNetClass*) pt_inst->pt_net)->qbit_input[0],
@@ -54,16 +55,22 @@ int NNSPClass_init(
 
     NeuralNetClass_init((NeuralNetClass*) pt_inst->pt_net);
     
+    pt_inst->pt_se_out = glob_se_out;
+    ns_lp_printf("nn_id=%d\n", pt_inst->nn_id);
+    ns_lp_printf("num_mfltrBank=%d\n", num_mfltrBank);
+    ns_lp_printf("num_dnsmpl=%d\n", num_dnsmpl);
+    
 	return 0;
 }
 
 int NNSPClass_reset(NNSPClass* pt_inst)
 {
 	int i;
-    FeatureClass_setDefault((FeatureClass*)   pt_inst->pt_feat);
+    FeatureClass_setDefault((FeatureClass*) pt_inst->pt_feat);
     NeuralNetClass_setDefault((NeuralNetClass*) pt_inst->pt_net);
     pt_inst->slides = 1;
     pt_inst->trigger = 0;
+
     for (i = 0; i < DIM_INTENTS; i++)
         pt_inst->counts_category[i] = 0;
 
@@ -78,63 +85,69 @@ int16_t NNSPClass_exec(
         NNSPClass* pt_inst,
         int16_t* rawPCM)
 {
-	static int32_t output[50];
-    FeatureClass* pt_feat = (FeatureClass*)  pt_inst->pt_feat;
-    NeuralNetClass* pt_net = (NeuralNetClass*) pt_inst->pt_net;
+	static int32_t output[512];
+    FeatureClass* pt_feat   = (FeatureClass*)  pt_inst->pt_feat;
+    NeuralNetClass* pt_net  = (NeuralNetClass*) pt_inst->pt_net;
     int8_t debug_layer = -1;
     FeatureClass_execute(pt_feat, rawPCM);
-    if (pt_inst->num_dnsmpl == 1)
+
+    if (pt_inst->slides == 1)
     {
-        
-    }
-    else if (pt_inst->num_dnsmpl == 2)
-    {
-        if (pt_inst->slides == 1)
+#ifdef ENERGYMODE
+        am_set_power_monitor_state(AM_AI_INFERING);
+#endif
+#if CHECK_POWER
+        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
+#endif
+        NeuralNetClass_exe(
+            pt_net, 
+            pt_feat->normFeatContext, 
+            output,
+            debug_layer);
+
+        switch (pt_inst->nn_id)
         {
-            #ifdef ENERGYMODE
-                am_set_power_monitor_state(AM_AI_INFERING);
-            #endif
-    #if CHECK_POWER
-            am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
-    #endif
-            NeuralNetClass_exe(
-                pt_net, 
-                pt_feat->normFeatContext, 
+        case s2i_id:
+            s2i_post_proc(
+                pt_inst,
                 output,
-                debug_layer);
-            switch (pt_inst->nn_id)
-            {
-            case s2i_id:
-                s2i_post_proc(
-                    pt_inst,
-                    output,
-                    &pt_inst->trigger);
-                break;
+                &pt_inst->trigger);
+            break;
 
-            case kws_galaxy_id:
-                binary_post_proc(
-                    pt_inst,
-                    output,
-                    &pt_inst->trigger);
-                break;
+        case kws_galaxy_id:
+            binary_post_proc(
+                pt_inst,
+                output,
+                &pt_inst->trigger);
+            break;
 
-            case vad_id:
-                binary_post_proc(
-                    pt_inst,
-                    output,
-                    &pt_inst->trigger);
-                break;
-            }
+        case vad_id:
+            binary_post_proc(
+                pt_inst,
+                output,
+                &pt_inst->trigger);
+            break;
 
-    #if CHECK_POWER
-            am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-    #endif
+        case se_id:
+            se_post_proc(
+                pt_inst,
+                (int16_t*) output,
+                pt_inst->pt_se_out);
+            break;
         }
-        pt_inst->slides = (pt_inst->slides + 1) % 2;
-    }
-	return pt_inst->trigger;
-}
 
+#if CHECK_POWER
+        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
+#endif
+    }
+
+    if (pt_inst->num_dnsmpl == 1)
+        pt_inst->slides = 1;
+    else
+        pt_inst->slides = (pt_inst->slides + 1) % pt_inst->num_dnsmpl;
+	
+    return pt_inst->trigger;
+}
 
 void my_argmax(int32_t *vals, int len, int16_t *pt_argmax)
 {
@@ -150,6 +163,41 @@ void my_argmax(int32_t *vals, int len, int16_t *pt_argmax)
             *pt_argmax = i;
         }
     }
+}
+
+void se_post_proc(
+        NNSPClass* pt_inst,
+        int16_t *pt_nn_est,
+        int16_t *pt_se_out)
+{
+    FeatureClass* pt_feat = (FeatureClass*) pt_inst->pt_feat;
+    stftModule* pt_stft_state = &(pt_feat->state_stftModule);
+    int32_t *spec = pt_stft_state->spec;
+    int64_t tmp;
+
+    for (int i = 0; i < (1 + (LEN_FFT_NNSP >> 1)); i++)
+    {
+        tmp = (int64_t) pt_nn_est[i] * (int64_t) spec[2*i];
+        tmp >>= 15;
+        spec[2*i] = (int32_t) tmp;
+
+        tmp = (int64_t) pt_nn_est[i] * (int64_t) spec[2*i + 1];
+        tmp >>= 15;
+        spec[2*i + 1] = (int32_t) tmp;
+
+        tmp = (int64_t) pt_nn_est[i] * (int64_t) spec[2*(512-i)];
+        tmp >>= 15;
+        spec[2*(512-i)] = (int32_t) tmp;
+
+        tmp = (int64_t) pt_nn_est[i] * (int64_t) spec[(512-i) * 2 + 1];
+        tmp >>= 15;
+        spec[(512-i) * 2 + 1] = (int32_t) tmp;
+    }
+    
+    stftModule_synthesize_arm(
+        pt_stft_state,
+        spec,
+        pt_se_out);
 }
 
 void s2i_post_proc(

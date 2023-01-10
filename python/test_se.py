@@ -17,7 +17,7 @@ NP_INFERENCE    = False
 
 class SeClass(NNInferClass):
     """
-    Class to handle VAD model
+    Class to handle SE model
     """
     def __init__(
             self,
@@ -42,7 +42,7 @@ class SeClass(NNInferClass):
 
     def reset(self):
         """
-        Reset s2i instance
+        Reset se instance
         """
         print("Reset all the states from parents")
         super().reset()
@@ -136,13 +136,13 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch128.txt',
+        default='nn_arch/def_se_nn_arch.txt',
         help='nn architecture')
 
     argparser.add_argument(
         '-ft',
         '--feat_type',
-        default='pspec',
+        default='mel',
         help='feature type: \'mel\'or \'pspec\'')
 
     argparser.add_argument(
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-v',
         '--test_wavefile',
-        default = 'test_wavs/speech.wav',
+        default = 'test_wavs/audio.wav',
         help    = 'The wavfile name to be tested')
 
     argparser.add_argument(
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 141,
+        default= 42,
         help='starting epoch')
 
     main(argparser.parse_args())

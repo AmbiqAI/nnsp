@@ -47,7 +47,7 @@ uint32_t test_feat()
     int16_t input[160];
     int i;
 
-    FeatureClass_construct(&feat, mean, stdR, 15);
+    FeatureClass_construct(&feat, mean, stdR, 15, 40);
     FeatureClass_setDefault(&feat);
 	ns_timer_init(&my_tickTimer);
     for (i=0; i < NUM_FRAMES_EST; i++)
@@ -115,13 +115,14 @@ uint32_t test_fft()
     int32_t input[512 + 2];
     int32_t output[512 << 1];
     uint32_t elapsed_time;
+    arm_rfft_instance_q31 fft_st;
     int i;
     
-    arm_fft_init();
+    arm_fft_init(&fft_st, 1);
 	ns_timer_init(&my_tickTimer);
     for (i = 0; i < NUM_FRAMES_EST; i++)
     {
-        arm_fft_exec(output, input);
+        arm_fft_exec(&fft_st, output, input);
     }
     elapsed_time = ns_us_ticker_read(&my_tickTimer);    
     ns_lp_printf("fft: %3.2f ms/inference\n",

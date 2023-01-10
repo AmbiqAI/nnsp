@@ -14,7 +14,7 @@ typedef struct
 	int16_t hop;
 	int16_t len_fft;
 	int16_t dataBuffer[LEN_FFT_NNSP];
-	int16_t odataBuffer[LEN_FFT_NNSP];
+	int32_t odataBuffer[LEN_FFT_NNSP];
 	const int16_t* window;
 	arm_rfft_instance_q31 fft_st;
 	arm_rfft_instance_q31 ifft_st;
@@ -25,7 +25,7 @@ int stftModule_construct(stftModule* ps);
 
 int stftModule_setDefault(stftModule* ps);
 
-#if ARM_OPTIMIZED==0
+#if ARM_FFT==0
 void spec2pspec(
 		int32_t* y, 
 		int32_t* x, 
@@ -36,20 +36,24 @@ int stftModule_analyze(
 		int16_t* x,
 		int32_t* y);
 #else
+
 void spec2pspec_arm(
-		int32_t* y, // q15
-		int32_t* x, // q21
+		int32_t* pspec, // q15
+		int32_t* spec, 	// q21
 		int len);
 
 int stftModule_analyze_arm(
-		void* ps,
-		int16_t* input, // q15
-		int32_t* output); // q21
+		void* ps_t,
+		int16_t* fft_in_q16, 	// q15
+		int32_t* spec); 		// q21
+
 int stftModule_synthesize_arm(
-		void* ps,
-		int16_t* x,
-		int32_t* y);
+		void* ps_t,
+		int32_t* spec,
+		int16_t* output);
+
 #endif
+
 
 #ifdef __cplusplus
 }
