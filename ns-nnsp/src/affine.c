@@ -184,7 +184,6 @@ int affine_Krows_8x16(
 		pt_accum[1] = sum1;
 		pt_accum[2] = sum2;
 		pt_accum[3] = sum3;
-
 	}
 	else if (dim_output == 3)
 	{
@@ -231,24 +230,23 @@ int affine_Krows_8x16(
 	}
 	*pp_kernel = p_kernel;
 	*pp_bias = p_bias;
-	
-	return 0;
 
+	return 0;
 }
 #else
 int affine_Krows_8x16(
-	int16_t dim_output,
-	int16_t** pp_output,
-	int8_t** pp_kernel,
-	int16_t** pp_bias,
-	int16_t* input,
-	int16_t dim_input,
-	int16_t qbit_kernel,
-	int16_t qbit_bias,
-	int16_t qbit_input,
-	int64_t* pt_accum,
-	int8_t is_out,
-	void* (*act)(void*, int32_t*, int))
+		int16_t dim_output,
+		int16_t** pp_output,
+		int8_t** pp_kernel,
+		int16_t** pp_bias,
+		int16_t* input,
+		int16_t dim_input,
+		int16_t qbit_kernel,
+		int16_t qbit_bias,
+		int16_t qbit_input,
+		int64_t* pt_accum,
+		int8_t is_out,
+		void* (*act)(void*, int32_t*, int))
 {
 	int8_t* p_kernel = *pp_kernel;
 	int16_t* p_bias = *pp_bias;
@@ -265,7 +263,6 @@ int affine_Krows_8x16(
 	else
 		qbit_s = MAX(15, qbit_input + qbit_kernel);
 
-
 	for (i = 0; i < (dim_input >> 1); i++)
 	{
 		in[0] = *pi++;
@@ -275,7 +272,6 @@ int affine_Krows_8x16(
 			pt_accum[j] += (int64_t)p_kernel[0] * (int64_t)in[0] + (int64_t)p_kernel[1] * (int64_t)in[1];
 			p_kernel += 2;
 		}
-
 	}
 
 	if (dim_input % 2)
@@ -283,13 +279,11 @@ int affine_Krows_8x16(
 		in[0] = *pi++;
 		for (j = 0; j < dim_output; j++)
 			pt_accum[j] += (int64_t)*p_kernel++ * (int64_t)in[0];
-
 	}
 
 	shift = qbit_s - (qbit_input + qbit_kernel);
 	shift_64b(pt_accum, shift, dim_output); // align acc to w
 
-	
 	if (p_bias != 0)
 	{
 		shift = qbit_s - (qbit_bias);
@@ -299,7 +293,6 @@ int affine_Krows_8x16(
 			pt_accum[i] += (shift >= 0) ? ((int64_t)*p_bias++) << shift : ((int64_t)*p_bias++) >> -shift;
 		}
 	}
-	
 
 	if (is_out)
 	{
@@ -313,13 +306,11 @@ int affine_Krows_8x16(
 		po = *pp_output;
 		po = (int16_t*)(*act)(po, acc32, dim_output);
 		*pp_output = po;
-
 	}
 	*pp_kernel = p_kernel;
 	*pp_bias = p_bias;
 
 	return 0;
-
 }
 
 #endif

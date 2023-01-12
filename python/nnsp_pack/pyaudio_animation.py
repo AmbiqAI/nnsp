@@ -86,6 +86,8 @@ class AudioShowClass:
                             self.callback_record)
         if os.path.exists(self.wave_output_filename):
             self.data_buffer, _= sf.read(self.wave_output_filename)
+            if len(self.data_buffer) != len(self.const_data_buffer):
+                self.data_buffer = self.const_data_buffer * 0
             self.line_data.set_data(self.const_data_buffer, self.data_buffer)
         self.lock_button = 0
         plt.show()

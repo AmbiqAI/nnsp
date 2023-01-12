@@ -1,6 +1,7 @@
 """
 Test trained NN model using wavefile as input
 """
+import os
 import argparse
 import wave
 import matplotlib.pyplot as plt
@@ -67,8 +68,9 @@ class VadClass(NNInferClass):
         """
         NN process for several frames
         """
+        os.makedirs("test_results", exist_ok=True)
         params_audio = self.params_audio
-        file = wave.open(r"output.wav", "wb")
+        file = wave.open(r"test_results/output.wav", "wb")
         file.setnchannels(2)
         file.setsampwidth(2)
         file.setframerate(16000)
@@ -101,15 +103,15 @@ class VadClass(NNInferClass):
 
         feats = np.array(feats)
         specs = np.array(specs)
-        display_stft(data, specs.T, feats.T, sample_rate=16000)
 
         out = np.empty((data.size + triggers.size,), dtype=data.dtype)
         out[0::2] = data
-        out[1::2] = probs
+        out[1::2] = 0.5 * (probs > 0.5).astype(int)
         out = np.floor(out * 2**15).astype(np.int16)
         file.writeframes(out.tobytes())
         file.close()
 
+        display_stft(data, specs.T, feats.T, sample_rate=16000)
         plt.figure(2)
         ax_handle = plt.subplot(3,1,1)
         ax_handle.plot(data)
@@ -164,7 +166,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-r',
         '--recording',
-        default = 0,
+        default = 1,
         help    = '1: recording the speech and test it, \
                    0: No recording.')
 

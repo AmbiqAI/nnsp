@@ -23,7 +23,7 @@ To work on Apollo4, you need
 - Segger J-Link v7.56+
 ### `Dataset`
 You need to download several datasets. Please read the license carefully. The detail can be found [here](./docs/README.md).
-# Run a RNN-based Speech to Intent Model
+# RNN-based Speech to Intent Model
 The original example can be found in AIWinterMute's S2I model, forked [here](https://github.com/AIWintermuteAI/Speech-to-Intent-Micro), though significantly re-written to work with AmbiqSuite on Ambiq's EVBs. The NN model is based on feed-forward NN, where each layer utilizes fully-connected (FC) layer, convolutional neural network (CNN) layer or residue net (resnet).
 
 There are few disadvantages in the original model:
@@ -101,7 +101,7 @@ In our example, we control 3 NNs, `speech activity detection`, `Hi-Galaxy` and `
 
 1. Go to `nnsp/evb/` directory
 1. `make clean`
-1. `make NNSP_MODE=1` or `make BOARD=apollo4b NNSP_MODE=1` depending on board type
+1. `make NNSP_MODE=nnsp` or `make BOARD=apollo4b NNSP_MODE=1` depending on board type
 1. `make deploy NNSP_MODE=1` Ensure your board is connected via the JLINK USB port and
    turned on first.
 1. Plug a mic into the 3.5mm port, and push BTN0 to initiate voice recording
@@ -109,6 +109,27 @@ In our example, we control 3 NNs, `speech activity detection`, `Hi-Galaxy` and `
    predicted slots/intents etc.
 
 `Note`: Due to the authority of the third-part licenses related to the training datasets (see [here](docs/README.md)), we couldn't provide a well-trained model here. The weight tables of NN we deployed on evb here is just in a random number. And the result is basically incorrect. Once you have the permission to access the data. please download it and train the model (see [here](./python/README.md)). 
+
+# Speech Enhancement
+This speech enhancement model is based on 16kHZ sampling rate. The model size is about 100kB.
+
+## Compiling and Running a Pre-Trained Model
+From the `nnsp/evb/` directory:
+
+1. `make clean`
+2. `make NNSP_MODE=se GUI_ENABLE=1`
+3. `make deploy` Prepare two USB cables. Ensure your board is connected via both the `JLINK USB port` and the `audio USB port`. Then turn on the power on EVB.
+4. Plug a mic into the 3.5mm port, and push BTN0 to initiate voice recording
+5. `make view` will provide SWO output as the device is running, showing 
+   predicted slots/intents etc.
+6. On your cmd, type
+   ```cmd
+   $ python ../python/tools/audioview_se.py --tty=/dev/tty.usbmodem1234561
+   ```
+   You should see a GUI popping out.
+   You might need to change the option `--tty` depending on your OS.
+7. On your GUI, prress `record` to start recording and `stop` to stop recording. There are two recording files under `nnsp/evb/audio_result/`. One is `audio_raw.wav`, the raw PCM data from your mic. The other is `audio_se.wav`, the enhanced speech.
+
 # Build NS-NNSP library from NeuralSPOT (Optional)
 If you want to modify or re-build the `ns-nnsp.a` library, you can follow the steps here. 
 1. Download NeuralSPOT
