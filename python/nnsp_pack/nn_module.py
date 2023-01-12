@@ -216,13 +216,13 @@ class NeuralNetClass(tf.keras.Model):
         logger.info(string)
 
     def update_limited_quantizated(
-                            self,
-                            quantized,
-                            limited = True,
-                            bounds_bias = [-4, 4 - 2**-6],
-                            bounds_weight = [-8, 8 - 2**-5],
-                            bitwidth_weight = 8,
-                            bitwidth_bias = 16):
+            self,
+            quantized,
+            limited = True,
+            bounds_bias = [-4, 4 - 2**-6],
+            bounds_weight = [-8, 8 - 2**-5],
+            bitwidth_weight = 8,
+            bitwidth_bias = 16):
         """
         Limiter and quantization of weight tables
         """

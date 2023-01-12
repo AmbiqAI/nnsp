@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "ambiq_nnsp_const.h"
 #include "minmax.h"
 #if DEBUG_PRINT
 #include "extern_files.h"
@@ -6,8 +7,8 @@
 #include "neural_nets.h"
 #include "lstm.h"
 #include "affine.h"
-int16_t input0[300];
-int16_t input1[300];
+int16_t input0[MAX_SIZE_FEATURE * NUM_FEATURE_CONTEXT];
+int16_t input1[MAX_SIZE_FEATURE * NUM_FEATURE_CONTEXT];
 
 static void pointer_exchange(void** ppt1, void** ppt2);
 

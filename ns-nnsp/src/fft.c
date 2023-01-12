@@ -1,5 +1,5 @@
 #include "ambiq_nnsp_debug.h"
-#if ARM_OPTIMIZED==0
+#if ARM_FFT==0
 #include "ambiq_stdint.h"
 #include "complex.h"
 #include "minmax.h"

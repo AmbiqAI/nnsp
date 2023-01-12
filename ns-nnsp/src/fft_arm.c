@@ -2,19 +2,24 @@
 #include <arm_math.h>
 #include "fft_arm.h"
 #include "ambiq_nnsp_const.h"
-arm_rfft_instance_q31 fft_st;
-void arm_fft_init()
+
+void arm_fft_init(
+        void *p_fft_st_t,
+        uint32_t is_ifft)
 {
-    uint32_t 	ifftFlagR = 0;
-    uint32_t 	bitReverseFlag=1;
-    arm_rfft_init_q31(  &fft_st,
+    arm_rfft_instance_q31 *p_fft_st = (arm_rfft_instance_q31*) p_fft_st_t;
+    uint32_t bitReverseFlag=1;
+    arm_rfft_init_q31(  p_fft_st,
                         LEN_FFT_NNSP, 
-                        ifftFlagR, 
+                        is_ifft, 
                         bitReverseFlag);
 }
 
-void arm_fft_exec(  int32_t *y,  // Q21
-                    int32_t *x ) // Q30
+void arm_fft_exec(  
+        void *p_fft_st_t,
+        int32_t *y,     // Q21
+        int32_t *x )    // Q30
 {
-    arm_rfft_q31(&fft_st, x, y);
+    arm_rfft_instance_q31 *p_fft_st = (arm_rfft_instance_q31*) p_fft_st_t;
+    arm_rfft_q31(p_fft_st, x, y);
 }

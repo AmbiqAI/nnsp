@@ -10,6 +10,7 @@
 *.txt
 *.lm
 *.pyc
+*.pk
 wavs/
 python/models_trained_bk
 nnsp/python/data/*tfrecords*.csv

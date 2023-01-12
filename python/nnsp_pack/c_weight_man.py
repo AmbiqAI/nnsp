@@ -46,19 +46,19 @@ def reshape_mat_KxN(mat, mat_reshape, arm_M4=False): # pylint: disable=invalid-n
         mat_reshape = np.concatenate((mat_reshape, sub_blk))
     return mat_reshape
 
-def c_lstm_weight_man(kernel_fw, kernel_re, bias):
+def c_lstm_weight_man(kernel_fw, kernel_re, bias, arm_M4=True):
     """
     C code lstm weight table management
     """
     rows = kernel_fw.shape[0] >> 2
-    kernel_fw_reshape  = c_lstm_kernel_man(kernel_fw, rows)
-    kernel_re_reshape = c_lstm_kernel_man(kernel_re, rows)
+    kernel_fw_reshape  = c_lstm_kernel_man(kernel_fw, rows, arm_M4)
+    kernel_re_reshape = c_lstm_kernel_man(kernel_re, rows, arm_M4)
 
     bias_reshape  = c_lstm_bias_man(bias, rows)
 
     return kernel_fw_reshape, kernel_re_reshape, bias_reshape
 
-def c_lstm_kernel_man(kernel, rows):
+def c_lstm_kernel_man(kernel, rows, arm_M4=True):
     """
     C code lstm kernel table management
     """
@@ -74,20 +74,20 @@ def c_lstm_kernel_man(kernel, rows):
         f_kernel = f_kernel_tot[i*4:i*4+4,:]
         o_kernel = o_kernel_tot[i*4:i*4+4,:]
 
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(i_kernel)))
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(j_kernel)))
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(f_kernel)))
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(o_kernel)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(i_kernel, arm_M4)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(j_kernel, arm_M4)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(f_kernel, arm_M4)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(o_kernel, arm_M4)))
 
     if residue_r:
         i_kernel = i_kernel_tot[-residue_r:,:]
         j_kernel = j_kernel_tot[-residue_r:,:]
         f_kernel = f_kernel_tot[-residue_r:,:]
         o_kernel = o_kernel_tot[-residue_r:,:]
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(i_kernel)))
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(j_kernel)))
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(f_kernel)))
-        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(o_kernel)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(i_kernel, arm_M4)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(j_kernel, arm_M4)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(f_kernel, arm_M4)))
+        kernel_reshape = np.concatenate((kernel_reshape, c_matrix_man(o_kernel, arm_M4)))
 
     return kernel_reshape
 

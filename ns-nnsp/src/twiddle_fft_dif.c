@@ -3,7 +3,7 @@
 // where and k in 0~Nt/4-1
 // Each complex value is of 32bit with each real and imag 16bit, respectively
 #include "ambiq_nnsp_debug.h"
-#if ARM_OPTIMIZED==0
+#if ARM_FFT==0
 #include <stdint.h>
 const int32_t fft_tw_coeff[] = {
 0x00007fff, 0x00007fff, 0x00007fff, 0x00007fff,
