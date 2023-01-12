@@ -128,7 +128,10 @@ From the `nnsp/evb/` directory:
    ```
    You should see a GUI popping out.
    You might need to change the option `--tty` depending on your OS.
-7. On your GUI, prress `record` to start recording and `stop` to stop recording. There are two recording files under `nnsp/evb/audio_result/`. One is `audio_raw.wav`, the raw PCM data from your mic. The other is `audio_se.wav`, the enhanced speech.
+7. On your GUI, prress `record` to start recording and `stop` to stop recording. 
+8. Check the two recording files under `nnsp/evb/audio_result/`. 
+   - One is `audio_raw.wav`, the raw PCM data from your mic.
+   - The other is `audio_se.wav`, the enhanced speech.
 
 # Build NS-NNSP library from NeuralSPOT (Optional)
 If you want to modify or re-build the `ns-nnsp.a` library, you can follow the steps here. 
