@@ -184,9 +184,13 @@ int main(void) {
 #ifdef DEF_GUI_ENABLE
     ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
     ns_lp_printf("\nTo start recording, on your cmd, type\n\n");
-    ns_lp_printf("\t$ python ../python/tools/audioview_se.py --tty=/dev/tty.usbmodem1234561 \n");
-    ns_lp_printf("\nand Press \'record\' on GUI to start! ");
+    ns_lp_printf("\t$ python ../python/tools/audioview_se.py --tty=/dev/tty.usbmodem1234561 # MacOS \n");
+    ns_lp_printf("\t\tor\n");
+    ns_lp_printf("\t> python ../python/tools/audioview_se.py --tty=COM4 # Windows \n");
+    ns_lp_printf("\nPress \'record\' on GUI to start, and then \'stop\' on GUI to stop recording.\n");
     ns_lp_printf("(You might change the \"--tty\" option based on your OS.)\n\n");
+    ns_lp_printf("After \'stop\', check the raw recorded speech \'audio_raw.wav\' and enhanced speech \'audio_se.wav\'\n");
+    ns_lp_printf("under the folder \'nnsp/evb/audio_result/\'\n\n");
 #else
     ns_lp_printf("\nPress button to start!\n");
 #endif

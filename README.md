@@ -101,8 +101,8 @@ In our example, we control 3 NNs, `speech activity detection`, `Hi-Galaxy` and `
 
 1. Go to `nnsp/evb/` directory
 1. `make clean`
-1. `make NNSP_MODE=nnsp` or `make BOARD=apollo4b NNSP_MODE=1` depending on board type
-1. `make deploy NNSP_MODE=1` Ensure your board is connected via the JLINK USB port and
+1. `make NNSP_MODE=nnsp` or `make BOARD=apollo4b NNSP_MODE=nnsp` depending on board type
+1. `make deploy NNSP_MODE=nnsp` Ensure your board is connected via the JLINK USB port and
    turned on first.
 1. Plug a mic into the 3.5mm port, and push BTN0 to initiate voice recording
 1. `make view` will provide SWO output as the device is running, showing 

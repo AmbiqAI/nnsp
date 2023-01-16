@@ -132,7 +132,7 @@ def tfrecords_pipeline(
                     num_parallel_calls = tf.data.AUTOTUNE)
     options = tf.data.Options()
     options.threading.max_intra_op_parallelism = 1
-    options.threading.private_threadpool_size = 10
+    options.threading.private_threadpool_size = 6
     dataset = dataset.with_options(options)
     dataset = dataset.prefetch(buffer_size = tf.data.AUTOTUNE)
     iterator = iter(dataset)

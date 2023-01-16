@@ -393,22 +393,22 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_s2i_nn_arch.txt',
+        default='nn_arch/def_se_nn_arch72_mel.txt',
         help='nn architecture')
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 800,
+        default= 85,
         help='starting epoch')
 
     argparser.add_argument(
         '--net_id',
-        default= 0,
+        default= 3,
         help='starting epoch')
 
     argparser.add_argument(
         '--net_name',
-        default= 's2i',
+        default= 'se',
         help='starting epoch')
 
     main(argparser.parse_args())

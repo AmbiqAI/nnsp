@@ -19,7 +19,7 @@ from nnsp_pack.tf_basic_math import tf_log10_eps, tf_power_eps
 import c_code_table_converter
 
 SHOW_STEPS          = True
-DISPLAY_HISTOGRAM   = True
+DISPLAY_HISTOGRAM   = False
 BLOCKS_PER_AUDIO    = 5
 DIM_TARGET          = 257
 physical_devices    = tf.config.list_physical_devices('GPU')
@@ -76,21 +76,21 @@ def train_kernel(
 
     return est, states, ave_loss, steps
 
-def epoch_proc( net,
-                optimizer,
-                dataset,
-                fnames,
-                batchsize,
-                timesteps,
-                training,
-                zero_state,
-                norm_mean,
-                norm_inv_std,
-                num_dnsampl     = 1,
-                num_context     = 6,
-                quantized       = False,
-                feat_type       = 'mel'
-                ):
+def epoch_proc(
+        net,
+        optimizer,
+        dataset,
+        fnames,
+        batchsize,
+        timesteps,
+        training,
+        zero_state,
+        norm_mean,
+        norm_inv_std,
+        num_dnsampl     = 1,
+        num_context     = 6,
+        quantized       = False,
+        feat_type       = 'mel'):
     """
     Training for one epoch
     """
@@ -408,13 +408,13 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch128.txt',
+        default='nn_arch/def_se_nn_arch72_mel.txt',
         help='nn architecture')
 
     argparser.add_argument(
         '-ft',
         '--feat_type',
-        default='pspec',
+        default='mel',
         help='feature type: \'mel\'or \'pspec\'')
 
     argparser.add_argument(
@@ -439,14 +439,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-t',
         '--timesteps',
-        default=100,
+        default=500,
         type=int,
         help='rnn timesteps for training and validation')
 
     argparser.add_argument(
         '-q',
         '--quantized',
-        default=False,
+        default=True,
         type=bool,
         help='is post quantization?')
 

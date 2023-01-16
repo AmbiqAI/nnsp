@@ -53,6 +53,14 @@ class DataServiceClass:
         if is_record == 0:
             if self.wavefile:
                 self.wavefile.close()
+                
+                samplerate, sig = wavfile.read("audio_result/audio.wav")
+                sig1 = sig[:,0].flatten()
+                wavfile.write("audio_result/audio_raw.wav", samplerate, sig1.astype(np.int16))
+
+                sig2 = sig[:,1].flatten()
+                wavfile.write("audio_result/audio_se.wav", samplerate, sig2.astype(np.int16))
+
                 self.wavefile = None
                 print('Stop recording')
         else:
@@ -283,14 +291,6 @@ def main(args):
             proc_draw.terminate()
             proc_evb2pc.terminate()
             #Terminating main process
-
-            samplerate, sig = wavfile.read("audio_result/audio.wav")
-            sig1 = sig[:,0].flatten()
-            wavfile.write("audio_result/audio_raw.wav", samplerate, sig1.astype(np.int16))
-
-            sig2 = sig[:,1].flatten()
-            wavfile.write("audio_result/audio_se.wav", samplerate, sig2.astype(np.int16))
-
             sys.exit(1)
         time.sleep(0.5)
     

@@ -136,7 +136,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_se_nn_arch.txt',
+        default='nn_arch/def_se_nn_arch72_mel.txt',
         help='nn architecture')
 
     argparser.add_argument(
@@ -155,19 +155,19 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-v',
         '--test_wavefile',
-        default = 'test_wavs/audio.wav',
+        default = 'test_wavs/speech_1.wav',
         help    = 'The wavfile name to be tested')
 
     argparser.add_argument(
         '-q',
         '--quantized',
-        default = False,
+        default = True,
         type=bool,
         help='is post quantization?')
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 42,
+        default= 85,
         help='starting epoch')
 
     main(argparser.parse_args())
