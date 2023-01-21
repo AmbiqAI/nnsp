@@ -98,18 +98,18 @@ class DataServiceClass:
                 data = data.reshape((2, HOP_SIZE)).T.flatten()
                 self.wavefile.writeframesraw(data.tobytes())
 
-            # Data is a 16 bit PCM sample
-            self.lock.acquire()
-            fdata = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy() / 32768.0
-            self.lock.release()
-            start = cyc_count * HOP_SIZE
-            self.lock.acquire()
-            self.databuf[start:start+HOP_SIZE] = fdata[:HOP_SIZE]
-            self.lock.release()
-            cyc_count = (cyc_count+1) % FRAMES_TO_SHOW
-            self.lock.acquire()
-            self.cyc_count[0] = cyc_count
-            self.lock.release()
+                # Data is a 16 bit PCM sample
+                self.lock.acquire()
+                fdata = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy() / 32768.0
+                self.lock.release()
+                start = cyc_count * HOP_SIZE
+                self.lock.acquire()
+                self.databuf[start:start+HOP_SIZE] = fdata[:HOP_SIZE]
+                self.lock.release()
+                cyc_count = (cyc_count+1) % FRAMES_TO_SHOW
+                self.lock.acquire()
+                self.cyc_count[0] = cyc_count
+                self.lock.release()
 
         sys.stdout.flush()
 
