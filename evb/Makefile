@@ -25,6 +25,7 @@ ifeq ($(NNSP_MODE),se) # se
 sources+=src/def_nn3_se.c
 sources+=src/seCntrlClass.c
 sources+=src/main_se.cc
+sources+=src/tflite.cc
 else # s2i only
 sources+=src/s2iCntrlClass.c
 sources+=src/main_s2i.cc

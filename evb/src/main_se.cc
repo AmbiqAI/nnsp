@@ -1,3 +1,4 @@
+#include "tflite.h"
 #include <stdint.h>
 #include "seCntrlClass.h"
 #include "am_util_stdio.h"
@@ -6,7 +7,6 @@
 #include "ns_ambiqsuite_harness.h"
 #include "ns_audio.h"
 #include "ambiq_nnsp_const.h"
-
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
 
@@ -196,7 +196,8 @@ int main(void) {
 #endif
     // reset all internal states
     seCntrlClass_reset(&cntrl_inst);
-    
+    tflite_init();
+    test_tflite();
     while (1) 
     {
         g_audioRecording = false;
