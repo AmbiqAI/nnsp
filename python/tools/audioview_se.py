@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import scipy.io.wavfile as wavfile
 # Define the RPC service handlers - one for each EVB-to-PC RPC function
+
 FRAMES_TO_SHOW  = 500
 SAMPLING_RATE   = 16000
 HOP_SIZE        = 160
@@ -83,9 +84,11 @@ class DataServiceClass:
             else:
                 print('Start recording')
                 cyc_count = 0
+
                 self.lock.acquire()
                 self.cyc_count[0] = cyc_count
                 self.lock.release()
+
                 self.wavefile = self.wavefile_init(self.wavename)
 
             if (pcmBlock.cmd == GenericDataOperations_EvbToPc.common.command.write_cmd) \
@@ -102,11 +105,15 @@ class DataServiceClass:
                 self.lock.acquire()
                 fdata = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy() / 32768.0
                 self.lock.release()
+
                 start = cyc_count * HOP_SIZE
+
                 self.lock.acquire()
                 self.databuf[start:start+HOP_SIZE] = fdata[:HOP_SIZE]
                 self.lock.release()
+
                 cyc_count = (cyc_count+1) % FRAMES_TO_SHOW
+
                 self.lock.acquire()
                 self.cyc_count[0] = cyc_count
                 self.lock.release()
@@ -162,9 +169,11 @@ class VisualDataClass:
         self.fig, self.ax_handle = plt.subplots()
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         plt.subplots_adjust(bottom=0.35)
+
         self.lock.acquire()
         np_databuf = databuf[0:]
         self.lock.release()
+
         self.line_data, = self.ax_handle.plot(self.xdata, np_databuf, lw=0.5, color = 'blue')
         plt.ylim([-1.1,1.1])
         self.ax_handle.set_xlim((0, secs2show))
@@ -232,11 +241,10 @@ class VisualDataClass:
         if is_record == 0:
             self.lock.acquire()
             self.is_record[0] = 1
-
             self.lock.release()
             while 1:
-                cyc_count = self.cyc_count[0]
                 self.lock.acquire()
+                cyc_count = self.cyc_count[0]
                 np_databuf = self.databuf[0:]
                 self.lock.release()
 
@@ -280,7 +288,7 @@ def main(args):
     lock = Lock()
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
     record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
-    cyc_count = Array('i', [0]) 
+    cyc_count = Array('i', [0])
     # we use two multiprocesses to handle real-time visualization and recording
     # 1. proc_draw   : to visualize
     # 2. proc_evb2pc : to capture data from evb and recording
@@ -306,7 +314,7 @@ def main(args):
             #Terminating main process
             sys.exit(1)
         time.sleep(0.5)
-    
+
 if __name__ == "__main__":
 
     # parse cmd parameters

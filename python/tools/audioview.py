@@ -23,8 +23,8 @@ class DataServiceClass:
     """
     Capture Audio data: EVB->PC
     """
-    def __init__(self, databuf, wavout, lock, is_record):
-        self.cyc_count      = 0
+    def __init__(self, databuf, wavout, lock, is_record, cyc_count):
+        self.cyc_count      = cyc_count
         self.wavefile       = None
         self.wavename       = wavout
         self.databuf        = databuf
@@ -67,33 +67,38 @@ class DataServiceClass:
             #     .cmd = write_cmd,
             #     .buffer = {.data = (uint8_t *)in16AudioDataBuffer, // point this to audio buffer # pylint: disable=line-too-long
             #             .dataLength = SAMPLES_IN_FRAME * sizeof(int16_t)}};
-
-            if self.wavefile: # wavefile exists
-                if (pcmBlock.cmd == GenericDataOperations_EvbToPc.common.command.write_cmd) \
-                     and (pcmBlock.description == "Audio16bPCM_to_WAV"):
-
-                    self.lock.acquire()
-                    self.wavefile.writeframesraw(pcmBlock.buffer)
-                    self.lock.release()
-            else: # wavefile doesn't exist
+            if self.wavefile:
+                self.lock.acquire()
+                cyc_count = self.cyc_count[0]
+                self.lock.release()
+            else:
                 print('Start recording')
-                self.cyc_count = 0
+                cyc_count = 0
+                self.lock.acquire()
+                self.cyc_count[0] = cyc_count
+                self.lock.release()
                 self.wavefile = self.wavefile_init(self.wavename)
 
-            # Data is a 16 bit PCM sample
-            self.lock.acquire()
-            fdata = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy() / 32768.0
-            self.lock.release()
-            start = self.cyc_count * HOP_SIZE
-            if self.cyc_count == 0:
-                np_databuf = np.zeros(FRAMES_TO_SHOW * HOP_SIZE)
+            if (pcmBlock.cmd == GenericDataOperations_EvbToPc.common.command.write_cmd) \
+                     and (pcmBlock.description == "Audio16bPCM_to_WAV"):
+
                 self.lock.acquire()
-                self.databuf[0:] = np_databuf
+                self.wavefile.writeframesraw(pcmBlock.buffer)
                 self.lock.release()
-            self.lock.acquire()
-            self.databuf[start:start+HOP_SIZE] = fdata
-            self.lock.release()
-            self.cyc_count = (self.cyc_count+1) % FRAMES_TO_SHOW
+
+                # Data is a 16 bit PCM sample
+                self.lock.acquire()
+                fdata = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy() / 32768.0
+                self.lock.release()
+                start = cyc_count * HOP_SIZE
+
+                self.lock.acquire()
+                self.databuf[start:start+HOP_SIZE] = fdata
+                self.lock.release()
+                cyc_count = (cyc_count+1) % FRAMES_TO_SHOW
+                self.lock.acquire()
+                self.cyc_count[0] = cyc_count
+                self.lock.release()
 
         sys.stdout.flush()
 
@@ -135,11 +140,12 @@ class VisualDataClass:
     """
     Visual the audio data from EVB
     """
-    def __init__(self, databuf, lock, is_record, event_stop):
+    def __init__(self, databuf, lock, is_record, event_stop, cyc_count):
         self.databuf = databuf
         self.lock    = lock
         self.is_record = is_record
         self.event_stop = event_stop
+        self.cyc_count = cyc_count
         secs2show = FRAMES_TO_SHOW * HOP_SIZE/SAMPLING_RATE
         self.xdata = np.arange(FRAMES_TO_SHOW * HOP_SIZE) / SAMPLING_RATE
         self.fig, self.ax_handle = plt.subplots()
@@ -218,8 +224,11 @@ class VisualDataClass:
             self.lock.release()
             while 1:
                 self.lock.acquire()
+                cyc_count = self.cyc_count[0]
                 np_databuf = self.databuf[0:]
                 self.lock.release()
+                zeros_tail = [0.0] * (HOP_SIZE * (FRAMES_TO_SHOW - cyc_count))
+                np_databuf = np_databuf[:HOP_SIZE*cyc_count] + zeros_tail
                 self.line_data.set_data(self.xdata, np_databuf)
 
                 plt.pause(0.05)
@@ -231,18 +240,18 @@ class VisualDataClass:
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
-def target_proc_draw(databuf, lock, recording, event_stop):
+def target_proc_draw(databuf, lock, recording, event_stop, cyc_count):
     """
     one of multiprocesses: draw
     """
-    VisualDataClass(databuf, lock, recording, event_stop)
+    VisualDataClass(databuf, lock, recording, event_stop, cyc_count)
 
-def target_proc_evb2pc(tty, baud, databuf, wavout, lock, is_record):
+def target_proc_evb2pc(tty, baud, databuf, wavout, lock, is_record, cyc_count):
     """
     one of multiprocesses: EVB sends data to PC
     """
     transport_evb2pc = erpc.transport.SerialTransport(tty, int(baud))
-    handler = DataServiceClass(databuf, wavout, lock, is_record)
+    handler = DataServiceClass(databuf, wavout, lock, is_record, cyc_count)
     service = GenericDataOperations_EvbToPc.server.evb_to_pcService(handler)
     server = erpc.simple_server.SimpleServer(transport_evb2pc, erpc.basic_codec.BasicCodec)
     server.add_service(service)
@@ -257,13 +266,14 @@ def main(args):
     event_stop = multiprocessing.Event()
     lock = Lock()
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
-    record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
+    record_ind  = Array('i', [0]) # is_record indicator. 'No record' as initialization
+    cyc_count   = Array('i', [0])
     # we use two multiprocesses to handle real-time visualization and recording
     # 1. proc_draw   : to visualize
     # 2. proc_evb2pc : to capture data from evb and recording
     proc_draw   = Process(
                     target = target_proc_draw,
-                    args   = (databuf,lock, record_ind, event_stop))
+                    args   = (databuf,lock, record_ind, event_stop, cyc_count))
     proc_evb2pc = Process(
                     target = target_proc_evb2pc,
                     args   = (  args.tty,
@@ -271,7 +281,8 @@ def main(args):
                                 databuf,
                                 args.out,
                                 lock,
-                                record_ind))
+                                record_ind,
+                                cyc_count))
     proc_draw.start()
     proc_evb2pc.start()
     # monitor if program should be terminated

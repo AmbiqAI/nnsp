@@ -194,10 +194,10 @@ int main(void) {
 #else
     ns_lp_printf("\nPress button to start!\n");
 #endif
-    // reset all internal states
-    seCntrlClass_reset(&cntrl_inst);
+
     tflite_init();
     test_tflite();
+    seCntrlClass_reset(&cntrl_inst);
     while (1) 
     {
         g_audioRecording = false;

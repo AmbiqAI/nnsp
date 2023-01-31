@@ -58,7 +58,7 @@ def get_noise_files(files_list, noise_type):
                 lst += [os.path.join(root, file.strip())]
     return lst
 
-def get_noise(fnames, length = 16000 * 5):
+def get_noise(fnames, length = 16000 * 5, target_sampling_rate=16000):
     """Random pick ONE of noise from fnames"""
     len0 = len(fnames)
     rand_idx = np.random.randint(0, len0)
@@ -67,21 +67,21 @@ def get_noise(fnames, length = 16000 * 5):
         noise, sample_rate_in = sf.read(fnames[rand_idx])
     except: # pylint: disable=W0702
         logging.debug('reading noise file %s failed', fnames[rand_idx] )
-        noise = np.random.randn(16000).astype(np.float32) * 0.1
+        noise = np.random.randn(target_sampling_rate).astype(np.float32) * 0.1
     else:
         if noise.ndim > 1:
             noise = noise[:,0]
 
-        if sample_rate_in > 16000:
+        if sample_rate_in > target_sampling_rate:
             try:
                 noise = librosa.resample(
                             noise,
                             orig_sr=sample_rate_in,
-                            target_sr=16000)
+                            target_sr=target_sampling_rate)
             except: # pylint: disable=W0702
                 logging.debug('resampling noise %s failed. Loading random noise',  fnames[id])
                 noise = np.random.randn(length).astype(np.float32) * 0.1
-        elif sample_rate_in < 16000:
+        elif sample_rate_in < target_sampling_rate:
             logging.debug('reading noise file %s sampling rate < 16000', fnames[rand_idx])
             noise = np.random.randn(length).astype(np.float32) * 0.1
 
