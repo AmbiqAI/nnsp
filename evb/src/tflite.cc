@@ -1,5 +1,6 @@
 #include "arm_math.h"
-#include <stdio.h>
+#include "ns_debug_log.h"
+#include "ns_timer.h"
 #include "ns_ambiqsuite_harness.h"
 #include "tflite.h"
 #include "tensorflow/lite/micro/all_ops_resolver.h"
@@ -15,9 +16,8 @@
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "quant_model_act.h"
-#include "ns_timer.h"
 
-#define NUM_FRAMES 1
+#define NUM_FRAMES 2
 static tflite::MicroErrorReporter micro_error_reporter;
 tflite::ErrorReporter* error_reporter = nullptr;
 const tflite::Model* pt_model = nullptr;
@@ -38,7 +38,7 @@ void tflite_init(void)
 {
     error_reporter = &micro_error_reporter;
     tflite::InitializeTarget();
-
+    ns_TFDebugLogInit(NULL, NULL);
     // Map the model into a usable data structure. This doesn't involve any
     // copying or parsing, it's a very lightweight operation.
     pt_model = tflite::GetModel(model_tflite);
@@ -123,9 +123,9 @@ int test_tflite(void)
         invoke_status = pt_interpreter->Invoke();
         if (invoke_status != kTfLiteOk)
         {
-            MicroPrintf("Invoke failed");
+            MicroPrintf("Invoke failed\n");
             // TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
-            ns_lp_printf("Invoke failed\n");
+            // ns_lp_printf("Invoke failed\n");
         }
         // ns_lp_printf("Frame %d: %d\n", fr, pt_output->data.i16[1]);
     }
