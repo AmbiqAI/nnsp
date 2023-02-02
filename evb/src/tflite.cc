@@ -125,7 +125,7 @@ int test_tflite(void)
         {
             MicroPrintf("Invoke failed\n");
             // TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
-            // ns_lp_printf("Invoke failed\n");
+            ns_lp_printf("Invoke failed\n");
         }
         // ns_lp_printf("Frame %d: %d\n", fr, pt_output->data.i16[1]);
     }
