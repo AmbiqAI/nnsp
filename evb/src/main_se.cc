@@ -155,7 +155,6 @@ int main(void) {
     seCntrlClass cntrl_inst;
     int16_t *se_output = g_in16AudioDataBuffer + LEN_STFT_HOP;
     g_audioRecording = false;
-
     ns_core_init();
     // ns_power_config(&ns_lp_audio);
     ns_power_config(&ns_audio_default);
@@ -170,31 +169,6 @@ int main(void) {
     #endif
 
     ns_audio_init(&audio_config);
-    ns_peripheral_button_init(&button_config_nnsp);
-
-    // initialize neural nets controller
-    seCntrlClass_init(&cntrl_inst);
-
-#ifdef DEF_ACC32BIT_OPT
-    ns_lp_printf("You are using \"32bit\" accumulator.\n");
-#else
-    ns_lp_printf("You are using \"64bit\" accumulator.\n");
-#endif
-
-#ifdef DEF_GUI_ENABLE
-    ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
-    ns_lp_printf("\nTo start recording, on your cmd, type\n\n");
-    ns_lp_printf("\t$ python ../python/tools/audioview_se.py --tty=/dev/tty.usbmodem1234561 # MacOS \n");
-    ns_lp_printf("\t\tor\n");
-    ns_lp_printf("\t> python ../python/tools/audioview_se.py --tty=COM4 # Windows \n");
-    ns_lp_printf("\nPress \'record\' on GUI to start, and then \'stop\' on GUI to stop recording.\n");
-    ns_lp_printf("(You might change the \"--tty\" option based on your OS.)\n\n");
-    ns_lp_printf("After \'stop\', check the raw recorded speech \'audio_raw.wav\' and enhanced speech \'audio_se.wav\'\n");
-    ns_lp_printf("under the folder \'nnsp/evb/audio_result/\'\n\n");
-#else
-    ns_lp_printf("\nPress button to start!\n");
-#endif
-
     tflite_init();
     test_tflite();
     return 0;
