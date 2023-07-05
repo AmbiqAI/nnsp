@@ -73,7 +73,9 @@ void s2iCntrlClass_init(
         feature_mean_s2i,
         feature_stdR_s2i,
         &pt_inst->Params.thresh_prob_s2i,
-        &pt_inst->Params.thresh_cnts_s2i);
+        &pt_inst->Params.thresh_cnts_s2i,
+        40,
+        2);
 }
 
 void s2iCntrlClass_reset(s2iCntrlClass *pt_inst) {

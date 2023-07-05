@@ -9,8 +9,13 @@
 #include "arm_intrinsic_test.h"
 #include "ns_timer.h"
 #include "ns_energy_monitor.h"
-#include "ns_rpc_generic_data.h"
 
+#include <arm_math.h>
+
+#define RUN_SPEED_TESTING 1
+#ifdef DEF_GUI_ENABLE
+#include "ns_rpc_generic_data.h"
+#endif
 // #define ENERGY_MEASUREMENT
 #define NUM_CHANNELS 1
 int volatile g_intButtonPressed = 0;
@@ -37,14 +42,14 @@ bool volatile static g_audioRecording = false;
 bool volatile static g_audioReady = false;
 /// Audio buffer for application
 int16_t static g_in16AudioDataBuffer[LEN_STFT_HOP << 1];
-uint32_t static audadcSampleBuffer[LEN_STFT_HOP * 2 + 3];
+uint32_t static audadcSampleBuffer[(LEN_STFT_HOP << 1) + 3];
 
 
 #ifdef DEF_GUI_ENABLE 
 static char msg_store[30] = "Audio16bPCM_to_WAV";
 char msg_compute[30] = "CalculateMFCC_Please";
 // Block sent to PC
-static dataBlock outBlock = {
+static dataBlock pcmBlock = { // the block for pcm
     .length = LEN_STFT_HOP * sizeof(int16_t),
     .dType = uint8_e,
     .description = msg_store,
@@ -52,7 +57,7 @@ static dataBlock outBlock = {
     .buffer = {.data = (uint8_t *) g_in16AudioDataBuffer, // point this to audio buffer
                .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
 // Block sent to PC for computation
-dataBlock computeBlock = {
+dataBlock computeBlock = {  // this block is useless here actually
     .length = LEN_STFT_HOP * sizeof(int16_t),
     .dType = uint8_e,
     .description = msg_compute,
@@ -60,7 +65,7 @@ dataBlock computeBlock = {
     .buffer = {.data = (uint8_t *) g_in16AudioDataBuffer, // point this to audio buffer
                .dataLength = LEN_STFT_HOP * sizeof(int16_t)}};
 
-dataBlock resultBlock;
+dataBlock IsRecordBlock;
 // Block sent to PC for computation
 ns_rpc_config_t rpcConfig = {.mode = NS_RPC_GENERICDATA_CLIENT,
                             .sendBlockToEVB_cb = NULL,
@@ -137,17 +142,18 @@ ns_audio_config_t audio_config = {
 #endif
 };
 
-const ns_power_config_t ns_lp_audio = {.eAIPowerMode = NS_MAXIMUM_PERF,
-                                       .bNeedAudAdc = true,
-                                       .bNeedSharedSRAM = false,
-                                       .bNeedCrypto = false,
-                                       .bNeedBluetooth = false,
-                                       .bNeedUSB = false,
-                                       .bNeedIOM = false,
-                                       .bNeedAlternativeUART = false,
-                                       .b128kTCM = false,
-                                       .bEnableTempCo = false,
-                                       .bNeedITM = false};                                  
+const ns_power_config_t ns_lp_audio = {
+        .eAIPowerMode           = NS_MAXIMUM_PERF,
+        .bNeedAudAdc            = true,
+        .bNeedSharedSRAM        = false,
+        .bNeedCrypto            = false,
+        .bNeedBluetooth         = false,
+        .bNeedUSB               = false,
+        .bNeedIOM               = false,
+        .bNeedAlternativeUART   = false,
+        .b128kTCM               = false,
+        .bEnableTempCo          = false,
+        .bNeedITM               = false};                                  
 
 int main(void) {
     s2iCntrlClass cntrl_inst;
@@ -177,25 +183,31 @@ int main(void) {
 #else
     ns_lp_printf("You are using \"64bit\" accumulator.\n");
 #endif
+
+#if RUN_SPEED_TESTING == 1
     ns_lp_printf("The estimate time per inference (10 ms data) will be ...\n");
+    // test_fft_ifft();
     arm_test_s2i(
         &cntrl_inst, 
         g_in16AudioDataBuffer);
-    test_fft();
     test_feat();
-    // test_upload_pc();
-    // arm_test_se();
-    // reset all internal states
-    s2iCntrlClass_reset(&cntrl_inst);
+    test_fft();
+    // test_fft_ifft();
+    ns_lp_printf("\n");
+    
+#endif
 
 #ifdef DEF_GUI_ENABLE
     ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
     ns_lp_printf("\nTo start recording, on your cmd, type\n\n");
     ns_lp_printf("\t$ python ../python/tools/audioview.py --tty=/dev/tty.usbmodem1234561 \n");
-    ns_lp_printf("\nand Press \'record\' on GUI to start!\n");
+    ns_lp_printf("\nand Press \'record\' on GUI to start! ");
+    ns_lp_printf("(You might change the \"--tty\" option based on your OS.)\n\n");
 #else
     ns_lp_printf("\nPress button to start!\n");
 #endif
+    // reset all internal states
+    s2iCntrlClass_reset(&cntrl_inst);
     while (1) 
     {
         g_audioRecording = false;
@@ -204,20 +216,21 @@ int main(void) {
 #ifdef DEF_GUI_ENABLE
         while (1)
         {
-            ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
-            if (resultBlock.buffer.data[0]==1)
+            ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock);
+            if (IsRecordBlock.buffer.data[0]==1)
             {
                 g_intButtonPressed = 1;
-                ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
                 break;
             }
-            ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
-            ns_printf("%d\n", resultBlock.buffer.data[0]);
+            ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
+            ns_printf("%d\n", IsRecordBlock.buffer.data[0]);
             am_hal_delay_us(20000); 
         }
 #endif
         if ( (g_intButtonPressed == 1) && (!g_audioRecording) ) 
         {
+            s2iCntrlClass_reset(&cntrl_inst);
             ns_lp_printf("\nYou'd pressed the button. Program start!\n");
             g_intButtonPressed = 0;
             g_audioRecording = true;
@@ -233,22 +246,22 @@ int main(void) {
                         &cntrl_inst,
                         g_in16AudioDataBuffer);
 #ifdef DEF_GUI_ENABLE
-                    ns_rpc_data_sendBlockToPC(&outBlock);
-                    ns_rpc_data_computeOnPC(&computeBlock, &resultBlock);
-                    if (resultBlock.buffer.data[0]==0)
+                    ns_rpc_data_sendBlockToPC(&pcmBlock);
+                    ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock);
+                    if (IsRecordBlock.buffer.data[0]==0)
                     {
                         g_audioRecording = false;
                         g_audioReady = false;
                         g_intButtonPressed = 0;
-                        ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                        ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
                         break;
                     }
-                    ns_rpc_data_clientDoneWithBlockFromPC(&resultBlock);
+                    ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
 #endif
                     g_audioReady = false;
                 }
                 
-            }
+            }  // while(1)
             ns_lp_printf("\nPress button to start!\n");
         }
     } // while(1)

@@ -12,7 +12,9 @@ def get_power(data):
     """Calculate power of data"""
     return np.mean(data**2)
 
-def add_noise(data, noise, snr_db, stime, etime):
+def add_noise(data, noise, snr_db, stime, etime,
+              return_all=False,
+              snr_dB_improved = None):
     """Synthesize noise and speech"""
     pw_data = get_power(data[stime:etime])
     pw_noise = get_power(noise)
@@ -25,8 +27,18 @@ def add_noise(data, noise, snr_db, stime, etime):
     max_val = np.abs(output).max()
     prob = np.random.uniform(0.05, 0.95, 1)
 
-    output = (output / (max_val + 10**-5)) * prob
-    return output
+    gain    = prob / (max_val + 10**-5)
+    output  = output * gain
+    data    = data   * gain
+    noise   = noise  * gain
+    # if snr_dB_improved:
+    #     gain0 = 10**(snr_dB_improved / 20)
+    #     data = data + noise / gain0
+
+    if return_all:
+        return output, data
+    else:
+        return output
 
 def get_noise_files_new(path_noise_folder):
     """Fetch all of noise files"""
@@ -46,7 +58,7 @@ def get_noise_files(files_list, noise_type):
                 lst += [os.path.join(root, file.strip())]
     return lst
 
-def get_noise(fnames, length = 16000 * 5):
+def get_noise(fnames, length = 16000 * 5, target_sampling_rate=16000):
     """Random pick ONE of noise from fnames"""
     len0 = len(fnames)
     rand_idx = np.random.randint(0, len0)
@@ -55,21 +67,21 @@ def get_noise(fnames, length = 16000 * 5):
         noise, sample_rate_in = sf.read(fnames[rand_idx])
     except: # pylint: disable=W0702
         logging.debug('reading noise file %s failed', fnames[rand_idx] )
-        noise = np.random.randn(16000).astype(np.float32) * 0.1
+        noise = np.random.randn(target_sampling_rate).astype(np.float32) * 0.1
     else:
         if noise.ndim > 1:
             noise = noise[:,0]
 
-        if sample_rate_in > 16000:
+        if sample_rate_in > target_sampling_rate:
             try:
                 noise = librosa.resample(
                             noise,
                             orig_sr=sample_rate_in,
-                            target_sr=16000)
+                            target_sr=target_sampling_rate)
             except: # pylint: disable=W0702
                 logging.debug('resampling noise %s failed. Loading random noise',  fnames[id])
                 noise = np.random.randn(length).astype(np.float32) * 0.1
-        elif sample_rate_in < 16000:
+        elif sample_rate_in < target_sampling_rate:
             logging.debug('reading noise file %s sampling rate < 16000', fnames[rand_idx])
             noise = np.random.randn(length).astype(np.float32) * 0.1
 

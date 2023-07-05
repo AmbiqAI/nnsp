@@ -9,20 +9,27 @@ TARGET = $(local_app_name)
 sources:=src/def_nn0_s2i.c
 sources+=src/def_nn1_vad.c
 sources+=src/def_nn2_kws_galaxy.c
-# sources+=src/def_nn3_se.c
 sources+=src/PcmBufClass.c
 sources+=src/arm_intrinsic_test.c
-sources+=src/$(local_app_name).cc
 
 sources += $(wildcard src/ns-core/*.c)
 sources += $(wildcard src/ns-core/*.cc)
 sources += $(wildcard src/ns-core/*.cpp)
 sources += $(wildcard src/ns-core/*.s)
 
-ifeq ($(NNSP_MODE),1)
+ifeq ($(NNSP_MODE),nnsp) # nnsp
 sources+=src/nnCntrlClass.c
+sources+=src/main_nnsp.cc
 else
+ifeq ($(NNSP_MODE),se) # se
+sources+=src/def_nn3_se.c
+sources+=src/seCntrlClass.c
+sources+=src/main_se.cc
+sources+=src/tflite.cc
+else # s2i only
 sources+=src/s2iCntrlClass.c
+sources+=src/main_s2i.cc
+endif
 endif
 
 targets  := $(BINDIR)/$(local_app_name).axf

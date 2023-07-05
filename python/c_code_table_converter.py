@@ -116,7 +116,8 @@ def converter(  net_tf,
                 stats,
                 nn_id = 0,
                 nn_name = 'nn_model',
-                make_c_table = True):
+                make_c_table = True,
+                arm_M4 = True):
     """
     Convert tensor in NN to c code
     """
@@ -160,7 +161,7 @@ def converter(  net_tf,
                 tmp = int(val * 2**15)
                 file.write(f'0x{fix2hex(tmp, nbit=32):08x}, ')
             file.write('};\n')
- 
+
             total_bytes = 0
             #-----------------weight table---------------------------------
             for i, layer_type in enumerate(layer_types):
@@ -169,7 +170,7 @@ def converter(  net_tf,
                 if layer_type in ('fc', 'conv1d'):
                     kernel = net_np[i]['kernel'].T
                     qbit = net_np[i]['qbits_w']
-                    kernel = c_weight_man.c_matrix_man(kernel)
+                    kernel = c_weight_man.c_matrix_man(kernel, arm_M4)
 
                     kernel = float2fix(kernel, qbit, 8)
                     file.write(f'const uint8_t {nn_name}_kernel{i}[]={{')
@@ -194,7 +195,7 @@ def converter(  net_tf,
 
                     bias = net_np[i]['bias'].T
                     kernel_f, kernel_r, bias = c_weight_man.c_lstm_weight_man(
-                                                kernel_f, kernel_r, bias)
+                                                kernel_f, kernel_r, bias, arm_M4)
 
                     qbit = net_np[i]['qbits_w']
                     kernel_f = float2fix(kernel_f, qbit, 8)
@@ -277,7 +278,7 @@ def converter(  net_tf,
                 if act=='tanh':
                     file.write('ftanh,')
                 elif act=='sigmoid':
-                    file.write('fsigmoid,')
+                    file.write('sigmoid,')
                 else:
                     file.write(f'{act},')
             file.write('}, // activations\n\n')
@@ -379,7 +380,8 @@ def main(args):
             nn_infer,
             stats,
             nn_name = nn_name,
-            nn_id   = nn_id)
+            nn_id   = nn_id,
+            arm_M4  = True)
 
     print(f'\nweight table is generated in \n{fname_inc}\n{fname_c}')
 
@@ -391,22 +393,22 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_s2i_nn_arch.txt',
+        default='nn_arch/def_se_nn_arch72_mel.txt',
         help='nn architecture')
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 800,
+        default= 85,
         help='starting epoch')
 
     argparser.add_argument(
         '--net_id',
-        default= 0,
+        default= 3,
         help='starting epoch')
 
     argparser.add_argument(
         '--net_name',
-        default= 's2i',
+        default= 'se',
         help='starting epoch')
 
     main(argparser.parse_args())

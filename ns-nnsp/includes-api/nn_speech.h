@@ -22,6 +22,7 @@ typedef struct
 	int16_t num_dnsmpl;
 	int16_t outputs[3];
 	int16_t argmax_last;
+	int16_t *pt_se_out;
 }NNSPClass;
 
 int NNSPClass_init(
@@ -32,7 +33,9 @@ int NNSPClass_init(
 	const int32_t* pt_mean,
 	const int32_t* pt_stdR,
 	int16_t* pt_thresh_prob,
-	int16_t* pt_th_count_trigger);
+	int16_t* pt_th_count_trigger,
+	int16_t num_mfltrBank,
+	int16_t num_dnsmpl);
 
 int NNSPClass_reset(NNSPClass* pt_inst);
 
@@ -55,6 +58,11 @@ void s2i_post_proc(
 	NNSPClass* pt_inst,
 	int32_t* pt_nn_est,
 	int16_t *pt_trigger);
+
+void se_post_proc(
+	NNSPClass* pt_inst,
+	int16_t *pt_nn_est,
+	int16_t *pt_se_out);
 
 #ifdef __cplusplus
 }

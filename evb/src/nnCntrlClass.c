@@ -98,7 +98,9 @@ void nnCntrlClass_init(
             feature_mean_s2i,
             feature_stdR_s2i,
             &pt_inst->Params.thresh_prob_s2i,
-            &pt_inst->Params.thresh_cnts_s2i);
+            &pt_inst->Params.thresh_cnts_s2i,
+            40,
+            2);
 
     i = 1;
     NNSPClass_init(
@@ -109,7 +111,9 @@ void nnCntrlClass_init(
             feature_mean_vad,
             feature_stdR_vad,
             &pt_inst->Params.thresh_prob_vad,
-            &pt_inst->Params.thresh_cnts_vad);
+            &pt_inst->Params.thresh_cnts_vad,
+            40,
+            2);
 
     i = 2;
     NNSPClass_init(
@@ -120,7 +124,9 @@ void nnCntrlClass_init(
             feature_mean_kws_galaxy,
             feature_stdR_kws_galaxy,
             &pt_inst->Params.thresh_prob_kws,
-            &pt_inst->Params.thresh_cnts_kws);
+            &pt_inst->Params.thresh_cnts_kws,
+            40,
+            2);
 
     pt_inst->current_pos_seq = 0;
     pt_inst->cnt_voice_frames_detected = 0;
